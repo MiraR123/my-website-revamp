@@ -56,10 +56,15 @@ backend.
   (`login.html`, registration also reachable at `login.html#register`); the nav
   has a single `Client login` entry.
 - There is no server, database, API or session — the pages are static files.
-- Sign up stores the name/company/phone for an email in the browser's
-  `localStorage` under `bac.clients`; nothing is transmitted anywhere.
-- Passwords are validated for length/match but are never stored or checked, so
-  login only verifies that an account was created in the same browser.
+- Sign up stores the name/company/phone/password for an email in the browser's
+  `localStorage` under `bac.clients`; nothing is transmitted anywhere, and the
+  password is kept in clear text because there is nothing to hash against.
+- Forgotten password (`login.html#reset`) issues a 6-digit one-time code valid
+  for 15 minutes, then lets the client set a new password. A static site cannot
+  send email, so the message a server would send is *previewed on the page*
+  instead of being delivered. To send it for real you need either a backend
+  endpoint or a third-party mailer (EmailJS, Formspree, AWS SES) with an
+  account key — the existing password is deliberately never emailed.
 - Do not use these pages for real client credentials. Making them functional
   requires a backend (account storage, password hashing, sessions, HTTPS).
 

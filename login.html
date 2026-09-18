@@ -85,8 +85,63 @@
               <button class="btn btn-outline" type="button" data-open-tab="tab-register">New client? Register here</button>
             </div>
             <p class="form-status" role="status" aria-live="polite"></p>
-            <p class="auth-alt">Forgotten your password? Call <a href="tel:+914424840889">+91 - 44 - 2484 0889</a> or email <a href="mailto:bacipl@gmail.com">bacipl@gmail.com</a> and we will reset it for you.</p>
+            <p class="auth-alt"><a href="#reset" data-open-reset>Forgotten your password?</a> We will email a reset code to your registered address. You can also call <a href="tel:+914424840889">+91 - 44 - 2484 0889</a>.</p>
           </form>
+          </div>
+
+          <div class="auth-panel" id="panel-reset" hidden>
+          <h2>Reset your password</h2>
+          <p class="lead">We email a one-time code to the address on your account — never your existing password.</p>
+          <p class="form-note">Local demo: a static site cannot send mail, so the message that a server would email you is previewed on this page.</p>
+          <form data-auth="reset-request" novalidate>
+            <div class="field">
+              <label for="reset-email">Registered email address</label>
+              <input id="reset-email" name="email" type="email" autocomplete="email" required>
+              <span class="error" aria-live="polite"></span>
+            </div>
+            <div class="auth-actions">
+              <button class="btn btn-primary" type="submit">Email me a reset code</button>
+              <button class="btn btn-outline" type="button" data-open-tab="tab-signin">Back to sign in</button>
+            </div>
+            <p class="form-status" role="status" aria-live="polite"></p>
+          </form>
+
+          <div class="mail-preview" id="reset-mail" hidden>
+            <p class="mail-head">Preview of the email a server would send</p>
+            <p class="tight"><strong>To:</strong> <span data-mail="to"></span></p>
+            <p class="tight"><strong>Subject:</strong> Your Business Automation Centre reset code</p>
+            <p>Your one-time code is <strong class="mail-code" data-mail="code"></strong>. It expires in 15 minutes.</p>
+          </div>
+
+          <div id="reset-step-2" hidden>
+            <h3 class="stack-md">Set a new password</h3>
+            <form data-auth="reset-confirm" novalidate>
+              <input type="email" id="reset-email-confirm" name="email" hidden>
+              <div class="field">
+                <label for="reset-code">Reset code</label>
+                <input id="reset-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" required>
+                <span class="error" aria-live="polite"></span>
+              </div>
+              <div class="field field-pw">
+                <label for="reset-password">New password</label>
+                <input id="reset-password" name="password" type="password" autocomplete="new-password" data-minlength="8" required>
+                <button class="pw-toggle" type="button" data-toggle="reset-password">Show</button>
+                <span class="hint">At least 8 characters.</span>
+                <span class="error" aria-live="polite"></span>
+              </div>
+              <div class="field field-pw">
+                <label for="reset-confirm">Confirm new password</label>
+                <input id="reset-confirm" name="confirm" type="password" autocomplete="new-password" data-matches="reset-password" required>
+                <button class="pw-toggle" type="button" data-toggle="reset-confirm">Show</button>
+                <span class="error" aria-live="polite"></span>
+              </div>
+              <div class="auth-actions">
+                <button class="btn btn-primary" type="submit">Save new password</button>
+                <button class="btn btn-outline" type="button" data-open-tab="tab-signin">Back to sign in</button>
+              </div>
+              <p class="form-status" role="status" aria-live="polite"></p>
+            </form>
+          </div>
           </div>
 
           <div class="auth-panel" id="panel-register" role="tabpanel" aria-labelledby="tab-register" hidden>
