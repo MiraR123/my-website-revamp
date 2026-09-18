@@ -458,7 +458,7 @@ address { font-style: normal; }
 .auth-section { background: var(--surface-alt); }
 .auth-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, .85fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
   gap: var(--space-8);
   align-items: start;
 }
@@ -472,7 +472,7 @@ address { font-style: normal; }
 .auth-card h2 { margin-bottom: .3em; }
 .auth-card > p.lead { margin-bottom: var(--space-5); }
 .auth-aside .panel { background: var(--surface); }
-.field { display: grid; gap: 6px; margin-bottom: var(--space-4); }
+.field { display: grid; gap: 6px; margin-bottom: var(--space-4); align-content: start; }
 .field > label { font-weight: 600; color: var(--navy); font-size: .93rem; }
 .field input,
 .field select {
@@ -493,7 +493,7 @@ address { font-style: normal; }
 .field .hint { color: var(--muted); font-size: .84rem; }
 .field .error { color: #b3261e; font-size: .84rem; min-height: 1em; }
 .field.is-invalid input { border-color: #b3261e; }
-.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); align-items: start; }
 .field-pw { position: relative; }
 .field-pw input { padding-right: 76px; }
 .pw-toggle {
@@ -519,7 +519,7 @@ address { font-style: normal; }
   font-size: .93rem;
   color: var(--body);
 }
-.check input { margin-top: 3px; flex: none; }
+.check input { margin-top: 2px; width: 17px; height: 17px; accent-color: var(--blue); flex: none; }
 .auth-actions {
   display: flex;
   align-items: center;
@@ -603,5 +603,6 @@ address { font-style: normal; }
 .auth-tabs button.is-active span { color: #fff; }
 .auth-panel[hidden] { display: none; }
 .auth-switch { margin-top: var(--space-5); text-align: left; }
+.auth-aside .auth-switch[hidden] { display: none; }
 .auth-switch h3 { margin-bottom: .35em; }
 .auth-switch p { margin-bottom: var(--space-4); }

@@ -197,6 +197,8 @@
       if (panel) panel.hidden = !selected;
       if (selected && focus) tab.focus();
     });
+    var aside = document.getElementById("aside-register");
+    if (aside) aside.hidden = id === "tab-register";
     history.replaceState(null, "", id === "tab-register" ? "#register" : "#signin");
   }
 
