@@ -12,11 +12,12 @@ my-website/
 ├── services.html         # Services (9 services in 3 groups)
 ├── infrastructure.html   # Infrastructure
 ├── info.html             # Info — company, working hours, holidays, testimonials
-├── contact.html          # Contact us — address, phone, WhatsApp, email, website
+├── contact.html          # Contact us — address, phone, WhatsApp, email, website, map
+├── login.html            # Client login: sign in + new client registration tabs
 ├── css/
 │   └── style.css         # complete design system (was assets/css/modern.css)
 ├── js/
-│   └── script.js         # mobile nav, sticky header, back-to-top (was assets/js/site.js)
+│   └── script.js         # mobile nav, sticky header, back-to-top, account form validation
 └── images/               # only the images actually used by the pages
     ├── banner2.gif       # original animated logo (3D medallion in the hero)
     ├── banner1.gif       # original "Ultimate Plotting Solutions" banner
@@ -46,6 +47,27 @@ backend.
   `http://<your-LAN-IP>:3000` (subject to your firewall).
 - Public URL: drop this folder on any static host (Netlify Drop, GitHub Pages,
   Cloudflare Pages). Nothing here has been published.
+
+## Client login page (local demo only)
+
+`login.html` is a **front-end demonstration**, not real authentication:
+
+- Sign in and new client registration are two tabs of the one Client login page
+  (`login.html`, registration also reachable at `login.html#register`); the nav
+  has a single `Client login` entry.
+- There is no server, database, API or session — the pages are static files.
+- Sign up stores the name/company/phone for an email in the browser's
+  `localStorage` under `bac.clients`; nothing is transmitted anywhere.
+- Passwords are validated for length/match but are never stored or checked, so
+  login only verifies that an account was created in the same browser.
+- Do not use these pages for real client credentials. Making them functional
+  requires a backend (account storage, password hashing, sessions, HTTPS).
+
+## Colour
+
+The blue palette is derived from the original site logo: `banner2.gif`'s
+dominant colour `#336699` is the primary blue, with `#27527d` for hover/dark
+states and `#1b3a57` for the navy headings and footers.
 
 ## Technologies
 
