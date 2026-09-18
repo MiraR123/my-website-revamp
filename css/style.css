@@ -459,9 +459,12 @@ address { font-style: normal; }
 .auth-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
-  gap: var(--space-8);
+  gap: var(--space-7);
   align-items: start;
+  max-width: 1060px;
+  margin-inline: auto;
 }
+.auth-aside { position: sticky; top: 96px; display: grid; gap: var(--space-5); }
 .auth-card {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -558,6 +561,7 @@ address { font-style: normal; }
 }
 @media (max-width: 860px) {
   .auth-layout { grid-template-columns: 1fr; gap: var(--space-6); }
+  .auth-aside { position: static; }
 }
 @media (max-width: 560px) {
   .field-row { grid-template-columns: 1fr; gap: 0; }
