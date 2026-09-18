@@ -606,6 +606,28 @@ address { font-style: normal; }
 .auth-tabs button.is-active { background: var(--blue); color: rgba(255, 255, 255, .78); box-shadow: 0 6px 16px rgba(51, 102, 153, .25); }
 .auth-tabs button.is-active span { color: #fff; }
 .auth-panel[hidden] { display: none; }
+.mail-preview {
+  margin-top: var(--space-5);
+  padding: 18px 20px;
+  border: 1px dashed #bfd3e4;
+  border-radius: var(--radius-sm);
+  background: var(--surface-alt);
+  color: var(--body);
+  font-size: .93rem;
+}
+.mail-preview .mail-head {
+  margin-bottom: var(--space-3);
+  color: var(--muted);
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-weight: 600;
+}
+.mail-code {
+  font-size: 1.25rem;
+  letter-spacing: .16em;
+  color: var(--navy);
+}
 .auth-switch { margin-top: var(--space-5); text-align: left; }
 .auth-aside .auth-switch[hidden] { display: none; }
 .auth-switch h3 { margin-bottom: .35em; }

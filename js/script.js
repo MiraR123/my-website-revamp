@@ -87,6 +87,22 @@
     box.className = "form-status is-" + kind;
   }
 
+  /* No mail server exists in a static site, so the "email" is rendered on the
+     page as a preview of what a backend would send. */
+  function showResetMail(email, code) {
+    var mail = document.getElementById("reset-mail");
+    if (!mail) return;
+    mail.hidden = false;
+    var to = mail.querySelector("[data-mail=to]");
+    var body = mail.querySelector("[data-mail=code]");
+    if (to) to.textContent = email;
+    if (body) body.textContent = code;
+    var confirmEmail = document.getElementById("reset-email-confirm");
+    if (confirmEmail) confirmEmail.value = email;
+    var step = document.getElementById("reset-step-2");
+    if (step) step.hidden = false;
+  }
+
   function validate(form) {
     var ok = true;
     var firstInvalid = null;
@@ -159,14 +175,47 @@
         clients[email] = {
           name: (form.querySelector("#name") || {}).value || "",
           company: (form.querySelector("#company") || {}).value || "",
-          phone: (form.querySelector("#phone") || {}).value || ""
+          phone: (form.querySelector("#phone") || {}).value || "",
+          password: (form.querySelector("#signup-password") || {}).value || ""
         };
         writeClients(clients);
         status(form, "Account created for " + email + ". This is a local demo — no data leaves your browser.", "success");
         form.reset();
-      } else {
+      } else if (form.dataset.auth === "reset-request") {
         if (!clients[email]) {
-          status(form, "No local account found for " + email + ". Sign up first — this demo stores accounts in your browser only.", "error");
+          status(form, "No local account found for " + email + ". Register first — this demo stores accounts in your browser only.", "error");
+          return;
+        }
+        var code = String(Math.floor(100000 + Math.random() * 900000));
+        clients[email].reset = { code: code, expires: Date.now() + 15 * 60 * 1000 };
+        writeClients(clients);
+        showResetMail(email, code);
+        status(form, "Reset code generated for " + email + ".", "success");
+      } else if (form.dataset.auth === "reset-confirm") {
+        var account = clients[email];
+        var reset = account && account.reset;
+        var entered = (form.querySelector("#reset-code") || {}).value.trim();
+        if (!reset || reset.code !== entered) {
+          status(form, "That code does not match the one issued for " + email + ".", "error");
+          return;
+        }
+        if (reset.expires < Date.now()) {
+          status(form, "That code has expired. Request a new one.", "error");
+          return;
+        }
+        account.password = (form.querySelector("#reset-password") || {}).value;
+        delete account.reset;
+        writeClients(clients);
+        status(form, "Password updated for " + email + ". You can sign in with it now.", "success");
+        form.reset();
+      } else {
+        var user = clients[email];
+        if (!user) {
+          status(form, "No local account found for " + email + ". Register first — this demo stores accounts in your browser only.", "error");
+          return;
+        }
+        if (user.password && user.password !== (form.querySelector("#password") || {}).value) {
+          status(form, "Incorrect password for " + email + ".", "error");
           return;
         }
         status(form, "Signed in as " + email + ". This is a local demo — there is no server behind it.", "success");
@@ -199,6 +248,8 @@
     });
     var aside = document.getElementById("aside-register");
     if (aside) aside.hidden = id === "tab-register";
+    var reset = document.getElementById("panel-reset");
+    if (reset) reset.hidden = true;
     history.replaceState(null, "", id === "tab-register" ? "#register" : "#signin");
   }
 
@@ -213,5 +264,30 @@
     });
   });
 
+  var resetPanel = document.getElementById("panel-reset");
+
+  function openReset() {
+    Array.prototype.forEach.call(tabs, function (tab) {
+      tab.classList.remove("is-active");
+      tab.setAttribute("aria-selected", "false");
+      var panel = document.getElementById(tab.getAttribute("aria-controls"));
+      if (panel) panel.hidden = true;
+    });
+    resetPanel.hidden = false;
+    history.replaceState(null, "", "#reset");
+    var input = document.getElementById("reset-email");
+    if (input) input.focus();
+  }
+
+  if (resetPanel) {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-open-reset]"), function (link) {
+      link.addEventListener("click", function (e) {
+        e.preventDefault();
+        openReset();
+      });
+    });
+  }
+
   if (location.hash === "#register") activate("tab-register", false);
+  if (location.hash === "#reset" && resetPanel) openReset();
 })();
