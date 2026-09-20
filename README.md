@@ -16,6 +16,7 @@ my-website/
 ├── login.html            # Client login: sign in + new client registration tabs
 ├── dashboard.html        # Client dashboard (requires a Supabase session)
 ├── supabase-setup.sql    # schema, RLS policies and client-ID trigger — run once
+├── supabase-billing.sql  # delivery challan + invoice tables — run once, after the above
 ├── css/
 │   └── style.css         # complete design system (was assets/css/modern.css)
 ├── js/
@@ -67,19 +68,44 @@ no server of its own.
   a recovery link back to `login.html#reset`, where `auth.updateUser` stores the
   new password. The existing password is never emailed.
 - `dashboard.html` requires a session (otherwise it redirects to the login page)
-  and shows the client ID, contact details, verification state, account
-  reference and recent jobs.
+  and has three tabs, deep-linkable as `#account`, `#dc` and `#invoices`:
+  - **Account** — client ID, contact details, verification state, recent jobs.
+  - **Delivery challans** — every DC raised for the client with its date,
+    description, quantity, value and billed/unbilled status, filterable, with
+    totals for billed vs unbilled at the top.
+  - **Invoices** — one row per invoice with value, tax, total and payment
+    status; *View DCs* expands the row to list the challan numbers that
+    invoice covers.
+
+A challan counts as billed when its `invoice_id` is set, so the status is
+derived from the link to the invoice and cannot drift out of step with it.
 
 ### One-time setup
 
 1. Run `supabase-setup.sql` in the Supabase SQL editor (tables, RLS policies,
-   trigger, and a back-fill for users who registered earlier).
+   trigger, and a back-fill for users who registered earlier), then
+   `supabase-billing.sql` for the `delivery_challans` and `invoices` tables.
+   The dashboard degrades gracefully if the billing tables are missing — the
+   two tabs just say the records are not switched on yet.
 2. Authentication → Sign In / Providers → Email: with "Confirm email" on, a new
    client must click the confirmation link before their first sign-in. Turn it
    off for immediate access.
 3. Authentication → URL configuration: add the site URL(s) you serve from
    (e.g. `http://localhost:3000`, the GitHub Pages URL) as redirect URLs so the
    confirmation and password-reset links come back to the right place.
+
+### Entering challans and invoices
+
+The client-side policies are read-only, so rows are added from the Supabase
+Table Editor (or an import) by your office, not from the website:
+
+1. Create the invoice row first if the work is being billed (`invoice_number`
+   and `total` are generated for you; set `client_id` to the client's `id`
+   from `clients`).
+2. Add each challan to `delivery_challans` with its `client_id`, `dc_number`,
+   `dc_date` and `amount`. Leave `invoice_id` empty for an unbilled DC; set it
+   to the invoice's `id` to mark it billed and make it appear under that
+   invoice's *View DCs* list.
 
 ### On the anon key in `js/supabase-config.js`
 

@@ -51,6 +51,24 @@
       return sb.from("jobs").select("*").eq("client_id", userId).order("created_at", { ascending: false }).limit(10)
         .then(function (r) { return r.error ? null : r.data; })
         .catch(function () { return null; });
+    },
+
+    /* Challans carry the invoice they were billed on, so one request feeds
+       both the DC tab and the DC list nested under each invoice. */
+    getChallans: function (userId) {
+      return sb.from("delivery_challans")
+        .select("*, invoices ( invoice_number, invoice_date, status )")
+        .eq("client_id", userId)
+        .order("dc_date", { ascending: false })
+        .then(function (r) { return r.error ? null : r.data; })
+        .catch(function () { return null; });
+    },
+
+    getInvoices: function (userId) {
+      return sb.from("invoices").select("*").eq("client_id", userId)
+        .order("invoice_date", { ascending: false })
+        .then(function (r) { return r.error ? null : r.data; })
+        .catch(function () { return null; });
     }
   };
 
