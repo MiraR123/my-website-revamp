@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client dashboard — Business Automation Centre</title>
+<meta name="description" content="Client dashboard for Business Automation Centre — your client ID, account details and recent jobs.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="images/conamelogo.jpg" type="image/jpeg">
+<link rel="stylesheet" href="css/style.css?v=8">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="brand" href="index.html">
+      <img src="images/conamelogo.jpg" alt="Business Automation Centre logo">
+      <span class="brand-text">
+        <span class="brand-name">Business Automation Centre</span>
+        <span class="brand-tag">Ultimate plotting solutions</span>
+      </span>
+    </a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" aria-label="Toggle navigation menu"><span></span></button>
+    <nav class="site-nav" id="primary-nav" aria-label="Primary">
+      <ul>
+        <li><a href="index.html">About us</a></li>
+        <li><a href="services.html">Services</a></li>
+        <li><a href="infrastructure.html">Infrastructure</a></li>
+        <li><a href="info.html">Info</a></li>
+        <li><a href="contact.html">Contact us</a></li>
+        <li class="nav-cta"><a href="dashboard.html" aria-current="page">My dashboard</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="hero page-hero">
+    <div class="container hero-inner">
+      <div class="page-hero-text">
+        <p class="breadcrumb"><a href="index.html">Home</a> / Client dashboard</p>
+        <h1>Client dashboard</h1>
+        <p data-dash="greeting">Loading your account…</p>
+      </div>
+      <ul class="page-hero-meta">
+        <li>Client ID <strong data-dash="client-code">—</strong></li>
+        <li data-dash="status-chip">Signed in</li>
+        <li><a href="contact.html">Need help?</a></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <p class="form-status is-error" id="dash-error" hidden role="alert"></p>
+
+      <div class="dash-grid">
+        <div class="panel dash-id">
+          <p class="mail-head">Your client ID</p>
+          <p class="dash-code" data-dash="client-code">—</p>
+          <p class="tight">Quote this reference on artwork, purchase orders and emails so we can match your job instantly.</p>
+          <button class="btn btn-outline" type="button" id="dash-signout">Sign out</button>
+        </div>
+
+        <div class="panel">
+          <h2>Account details</h2>
+          <dl class="dash-list">
+            <div><dt>Contact name</dt><dd data-dash="full_name">—</dd></div>
+            <div><dt>Company</dt><dd data-dash="company">—</dd></div>
+            <div><dt>Email</dt><dd data-dash="email">—</dd></div>
+            <div><dt>Email verified</dt><dd data-dash="verified">—</dd></div>
+            <div><dt>Phone</dt><dd data-dash="phone">—</dd></div>
+            <div><dt>Client since</dt><dd data-dash="created">—</dd></div>
+            <div><dt>Last sign-in</dt><dd data-dash="last-signin">—</dd></div>
+            <div><dt>Account reference</dt><dd class="dash-uid" data-dash="uid">—</dd></div>
+          </dl>
+          <p class="tight">Need a detail changed? <a href="contact.html">Contact the office</a> and we will update it for you.</p>
+        </div>
+      </div>
+
+      <div class="panel stack-lg">
+        <h2>Recent jobs</h2>
+        <div id="dash-jobs"><p class="tight">Loading…</p></div>
+      </div>
+
+      <div class="dash-grid stack-lg">
+        <div class="panel">
+          <h3>What you can do here</h3>
+          <ul class="list">
+            <li>Keep your contact and company details on file with us</li>
+            <li>Track photo plotting, film output and PCB pre-process jobs</li>
+            <li>Quote one client ID for every repeat order</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>Office hours</h3>
+          <p class="tight">Monday to Friday, 09.00 to 18.00 hours.</p>
+          <p>Closed on Saturdays &amp; Sundays. <a href="info.html">See the holiday list</a>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <img src="images/conamelogo.jpg" alt="Business Automation Centre logo">
+        <p>IT and ITES, prepress, photo plotting and PCB pre-process services from Chennai, India — since 1990.</p>
+      </div>
+      <div>
+        <h4>Pages</h4>
+        <ul>
+          <li><a href="index.html">About us</a></li>
+          <li><a href="services.html">Services</a></li>
+          <li><a href="infrastructure.html">Infrastructure</a></li>
+          <li><a href="info.html">Info</a></li>
+          <li><a href="contact.html">Contact us</a></li>
+          <li><a href="login.html">Client login</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul>
+          <li>1st Floor, #39 Aziz Nagar 2nd Street,<br>Kodambakkam, Chennai 600 024, India</li>
+          <li><a href="tel:+914424840889">+91 - 44 - 2484 0889</a></li>
+          <li><a href="tel:+916382755218">+91 63827 55218</a> (+WhatsApp)</li>
+          <li><a href="mailto:bacipl@gmail.com">bacipl@gmail.com</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; Business Automation Centre, India. All rights reserved.</span>
+      <span>Mon–Fri, 09.00 – 18.00 IST</span>
+    </div>
+  </div>
+</footer>
+
+<button class="to-top" type="button" aria-label="Back to top">&uarr;</button>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js?v=8"></script>
+<script src="js/supabase-auth.js?v=8"></script>
+<script src="js/script.js?v=8"></script>
+<script src="js/dashboard.js?v=8"></script>
+</body>
+</html>

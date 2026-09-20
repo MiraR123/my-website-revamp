@@ -163,9 +163,16 @@
       e.preventDefault();
       if (!validate(form)) return;
 
-      var clients = readClients();
       var email = (form.querySelector("input[type=email]") || {}).value;
       email = (email || "").trim().toLowerCase();
+
+      /* Supabase is wired up: it owns every account form. */
+      if (window.BACAuth) {
+        window.BACAuth.handleForm(form, email, status);
+        return;
+      }
+
+      var clients = readClients();
 
       if (form.dataset.auth === "signup") {
         if (clients[email]) {
