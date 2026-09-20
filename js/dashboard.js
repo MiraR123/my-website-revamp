@@ -242,6 +242,8 @@
     var meta = user.user_metadata || {};
     var name = (profile && profile.full_name) || meta.full_name || "there";
 
+    var owner = (profile && (profile.company || profile.full_name)) || meta.company || meta.full_name;
+    set("heading", owner ? owner + " — dashboard" : "Client dashboard");
     set("greeting", "Welcome back, " + name + ".");
     set("client-code", (profile && profile.client_code) || "Pending");
     set("full_name", (profile && profile.full_name) || meta.full_name || "—");
