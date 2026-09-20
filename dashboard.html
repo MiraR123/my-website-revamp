@@ -7,7 +7,7 @@
 <meta name="description" content="Client dashboard for Business Automation Centre — your client ID, account details and recent jobs.">
 <meta name="robots" content="noindex">
 <link rel="icon" href="images/conamelogo.jpg" type="image/jpeg">
-<link rel="stylesheet" href="css/style.css?v=8">
+<link rel="stylesheet" href="css/style.css?v=12">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to main content</a>
@@ -40,28 +40,35 @@
   <section class="hero page-hero">
     <div class="container hero-inner">
       <div class="page-hero-text">
-        <p class="breadcrumb"><a href="index.html">Home</a> / Client dashboard</p>
-        <h1>Client dashboard</h1>
+        <p class="breadcrumb"><a href="index.html">Home</a> / <span data-dash="heading">Dashboard</span></p>
+        <h1 data-dash="heading">Dashboard</h1>
         <p data-dash="greeting">Loading your account…</p>
       </div>
       <ul class="page-hero-meta">
         <li>Client ID <strong data-dash="client-code">—</strong></li>
         <li data-dash="status-chip">Signed in</li>
         <li><a href="contact.html">Need help?</a></li>
+        <li class="hero-signout"><button class="btn btn-signout" type="button" data-signout>Sign out</button></li>
       </ul>
     </div>
   </section>
 
   <section class="section">
     <div class="container">
-      <p class="form-status is-error" id="dash-error" hidden role="alert"></p>
+      <p class="form-status" id="dash-error" hidden role="alert"></p>
 
+      <div class="dash-tabs" role="tablist" aria-label="Dashboard sections">
+        <button type="button" role="tab" id="tab-account" aria-controls="panel-account" aria-selected="true" class="is-active">Account</button>
+        <button type="button" role="tab" id="tab-dc" aria-controls="panel-dc" aria-selected="false">Delivery challans</button>
+        <button type="button" role="tab" id="tab-invoices" aria-controls="panel-invoices" aria-selected="false">Invoices</button>
+      </div>
+
+      <div class="dash-panel" id="panel-account" role="tabpanel" aria-labelledby="tab-account">
       <div class="dash-grid">
         <div class="panel dash-id">
           <p class="mail-head">Your client ID</p>
           <p class="dash-code" data-dash="client-code">—</p>
           <p class="tight">Quote this reference on artwork, purchase orders and emails so we can match your job instantly.</p>
-          <button class="btn btn-outline" type="button" id="dash-signout">Sign out</button>
         </div>
 
         <div class="panel">
@@ -98,6 +105,34 @@
           <h3>Office hours</h3>
           <p class="tight">Monday to Friday, 09.00 to 18.00 hours.</p>
           <p>Closed on Saturdays &amp; Sundays. <a href="info.html">See the holiday list</a>.</p>
+        </div>
+      </div>
+      </div>
+
+      <div class="dash-panel" id="panel-dc" role="tabpanel" aria-labelledby="tab-dc" hidden>
+        <div class="dash-stats" id="dc-stats"></div>
+
+        <div class="panel stack-lg">
+          <div class="dash-panel-head">
+            <h2>Delivery challans</h2>
+            <div class="dash-filter" role="group" aria-label="Filter challans">
+              <button type="button" class="is-active" data-dc-filter="all">All</button>
+              <button type="button" data-dc-filter="unbilled">Unbilled</button>
+              <button type="button" data-dc-filter="billed">Billed</button>
+            </div>
+          </div>
+          <p class="tight">Every challan we have raised against your client ID, and whether it has been carried on to an invoice.</p>
+          <div id="dc-list"><p class="tight">Loading…</p></div>
+        </div>
+      </div>
+
+      <div class="dash-panel" id="panel-invoices" role="tabpanel" aria-labelledby="tab-invoices" hidden>
+        <div class="dash-stats" id="inv-stats"></div>
+
+        <div class="panel stack-lg">
+          <h2>Invoices</h2>
+          <p class="tight">Each invoice groups the billed challans for the period. Use <strong>View DCs</strong> to see the challan numbers it covers.</p>
+          <div id="inv-list"><p class="tight">Loading…</p></div>
         </div>
       </div>
     </div>
@@ -142,9 +177,9 @@
 
 <button class="to-top" type="button" aria-label="Back to top">&uarr;</button>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
-<script src="js/supabase-config.js?v=8"></script>
-<script src="js/supabase-auth.js?v=8"></script>
-<script src="js/script.js?v=8"></script>
-<script src="js/dashboard.js?v=8"></script>
+<script src="js/supabase-config.js?v=12"></script>
+<script src="js/supabase-auth.js?v=12"></script>
+<script src="js/script.js?v=12"></script>
+<script src="js/dashboard.js?v=12"></script>
 </body>
 </html>
