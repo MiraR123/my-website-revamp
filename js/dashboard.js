@@ -14,8 +14,9 @@
     });
   }
 
-  function fail(message) {
-    if (!errorBox) return;
+  function fail(message, tone) {
+    if (!errorBox || !message) return;
+    errorBox.className = "form-status is-" + (tone || "error");
     errorBox.hidden = false;
     errorBox.textContent = message;
   }
@@ -254,7 +255,7 @@
     document.title = name + " — Client dashboard — Business Automation Centre";
 
     if (!profile) {
-      fail("Your profile row is not available yet, so the client ID shows as pending. Details below come from your sign-up.");
+      fail("Your profile row is not available yet, so the client ID shows as pending. Details below come from your sign-up.", "info");
     }
   }
 
