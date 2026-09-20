@@ -126,8 +126,8 @@
 
     stats(statHost, [
       ["Challans uploaded", String(list.length)],
-      ["Billed", billed.length + " · " + money(sum(billed))],
-      ["Unbilled", unbilled.length + " · " + money(sum(unbilled))]
+      ["Billed", money(sum(billed))],
+      ["Unbilled", money(sum(unbilled))]
     ]);
 
     if (!list.length) {
@@ -179,7 +179,7 @@
     stats(statHost, [
       ["Invoices raised", String(invoices.length)],
       ["Invoiced value", money(invoices.reduce(function (t, i) { return t + Number(i.total || 0); }, 0))],
-      ["Outstanding", outstanding.length + " · " + money(outstanding.reduce(function (t, i) { return t + Number(i.total || 0); }, 0))]
+      ["Outstanding", money(outstanding.reduce(function (t, i) { return t + Number(i.total || 0); }, 0))]
     ]);
 
     if (!invoices.length) {
@@ -263,13 +263,14 @@
     return;
   }
 
-  var signOut = document.getElementById("dash-signout");
-  if (signOut) {
-    signOut.addEventListener("click", function () {
-      signOut.disabled = true;
+  Array.prototype.forEach.call(document.querySelectorAll("[data-signout]"), function (button) {
+    button.addEventListener("click", function () {
+      Array.prototype.forEach.call(document.querySelectorAll("[data-signout]"), function (other) {
+        other.disabled = true;
+      });
       auth.signOut().then(function () { location.href = cfg.login || "login.html"; });
     });
-  }
+  });
 
   auth.getSession().then(function (session) {
     if (!session) {

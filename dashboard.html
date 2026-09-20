@@ -7,7 +7,7 @@
 <meta name="description" content="Client dashboard for Business Automation Centre — your client ID, account details and recent jobs.">
 <meta name="robots" content="noindex">
 <link rel="icon" href="images/conamelogo.jpg" type="image/jpeg">
-<link rel="stylesheet" href="css/style.css?v=9">
+<link rel="stylesheet" href="css/style.css?v=10">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to main content</a>
@@ -48,6 +48,7 @@
         <li>Client ID <strong data-dash="client-code">—</strong></li>
         <li data-dash="status-chip">Signed in</li>
         <li><a href="contact.html">Need help?</a></li>
+        <li class="hero-signout"><button class="btn btn-signout" type="button" data-signout>Sign out</button></li>
       </ul>
     </div>
   </section>
@@ -68,7 +69,7 @@
           <p class="mail-head">Your client ID</p>
           <p class="dash-code" data-dash="client-code">—</p>
           <p class="tight">Quote this reference on artwork, purchase orders and emails so we can match your job instantly.</p>
-          <button class="btn btn-outline" type="button" id="dash-signout">Sign out</button>
+          <button class="btn btn-signout" type="button" data-signout>Sign out</button>
         </div>
 
         <div class="panel">
@@ -177,9 +178,9 @@
 
 <button class="to-top" type="button" aria-label="Back to top">&uarr;</button>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
-<script src="js/supabase-config.js?v=9"></script>
-<script src="js/supabase-auth.js?v=9"></script>
-<script src="js/script.js?v=9"></script>
-<script src="js/dashboard.js?v=9"></script>
+<script src="js/supabase-config.js?v=10"></script>
+<script src="js/supabase-auth.js?v=10"></script>
+<script src="js/script.js?v=10"></script>
+<script src="js/dashboard.js?v=10"></script>
 </body>
 </html>
