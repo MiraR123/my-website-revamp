@@ -6,7 +6,7 @@
 <title>Client login — Business Automation Centre</title>
 <meta name="description" content="Client login for Business Automation Centre — access your plotting and prepress job details.">
 <link rel="icon" href="images/conamelogo.jpg" type="image/jpeg">
-<link rel="stylesheet" href="css/style.css?v=7">
+<link rel="stylesheet" href="css/style.css?v=8">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to main content</a>
@@ -63,7 +63,7 @@
           <div class="auth-panel" id="panel-signin" role="tabpanel" aria-labelledby="tab-signin">
           <h2>Sign in</h2>
           <p class="lead">Use the email address registered with us.</p>
-          <p class="form-note">Local demo: this front-end stores accounts in your browser only — there is no server or database behind it.</p>
+          <p class="form-note" data-demo-note>Local demo: this front-end stores accounts in your browser only — there is no server or database behind it.</p>
           <form data-auth="login" novalidate>
             <div class="field">
               <label for="email">Email address</label>
@@ -85,14 +85,14 @@
               <button class="btn btn-outline" type="button" data-open-tab="tab-register">New client? Register here</button>
             </div>
             <p class="form-status" role="status" aria-live="polite"></p>
-            <p class="auth-alt"><a href="#reset" data-open-reset>Forgotten your password?</a> We will email a reset code to your registered address. You can also call <a href="tel:+914424840889">+91 - 44 - 2484 0889</a>.</p>
+            <p class="auth-alt"><a href="#reset" data-open-reset>Forgotten your password?</a> We will email a reset link to your registered address. You can also call <a href="tel:+914424840889">+91 - 44 - 2484 0889</a>.</p>
           </form>
           </div>
 
           <div class="auth-panel" id="panel-reset" hidden>
           <h2>Reset your password</h2>
-          <p class="lead">We email a one-time code to the address on your account — never your existing password.</p>
-          <p class="form-note">Local demo: a static site cannot send mail, so the message that a server would email you is previewed on this page.</p>
+          <p class="lead">We email a secure reset link to the address on your account — never your existing password.</p>
+          <p class="form-note" data-demo-note>Local demo: a static site cannot send mail, so the message that a server would email you is previewed on this page.</p>
           <form data-auth="reset-request" novalidate>
             <div class="field">
               <label for="reset-email">Registered email address</label>
@@ -147,7 +147,7 @@
           <div class="auth-panel" id="panel-register" role="tabpanel" aria-labelledby="tab-register" hidden>
           <h2>New client registration</h2>
           <p class="lead">It takes a minute — we will confirm your account by phone or email.</p>
-          <p class="form-note">Local demo: this front-end stores accounts in your browser only — there is no server or database behind it.</p>
+          <p class="form-note" data-demo-note>Local demo: this front-end stores accounts in your browser only — there is no server or database behind it.</p>
           <form data-auth="signup" novalidate>
             <div class="field-row">
               <div class="field">
@@ -260,6 +260,9 @@
 </footer>
 
 <button class="to-top" type="button" aria-label="Back to top">&uarr;</button>
-<script src="js/script.js?v=7"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js?v=8"></script>
+<script src="js/supabase-auth.js?v=8"></script>
+<script src="js/script.js?v=8"></script>
 </body>
 </html>

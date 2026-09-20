@@ -14,10 +14,15 @@ my-website/
 ├── info.html             # Info — company, working hours, holidays, testimonials
 ├── contact.html          # Contact us — address, phone, WhatsApp, email, website, map
 ├── login.html            # Client login: sign in + new client registration tabs
+├── dashboard.html        # Client dashboard (requires a Supabase session)
+├── supabase-setup.sql    # schema, RLS policies and client-ID trigger — run once
 ├── css/
 │   └── style.css         # complete design system (was assets/css/modern.css)
 ├── js/
-│   └── script.js         # mobile nav, sticky header, back-to-top, account form validation
+│   ├── script.js         # mobile nav, sticky header, back-to-top, form validation
+│   ├── supabase-config.js# project URL + anon key
+│   ├── supabase-auth.js  # sign up / sign in / password reset against Supabase
+│   └── dashboard.js      # renders the signed-in client's details and jobs
 └── images/               # only the images actually used by the pages
     ├── banner2.gif       # original animated logo (3D medallion in the hero)
     ├── banner1.gif       # original "Ultimate Plotting Solutions" banner
@@ -48,25 +53,40 @@ backend.
 - Public URL: drop this folder on any static host (Netlify Drop, GitHub Pages,
   Cloudflare Pages). Nothing here has been published.
 
-## Client login page (local demo only)
+## Client accounts (Supabase)
 
-`login.html` is a **front-end demonstration**, not real authentication:
+Accounts are real: `login.html` and `dashboard.html` talk to Supabase Auth and
+PostgREST directly from the browser, so the site stays a pure static build with
+no server of its own.
 
-- Sign in and new client registration are two tabs of the one Client login page
-  (`login.html`, registration also reachable at `login.html#register`); the nav
-  has a single `Client login` entry.
-- There is no server, database, API or session — the pages are static files.
-- Sign up stores the name/company/phone/password for an email in the browser's
-  `localStorage` under `bac.clients`; nothing is transmitted anywhere, and the
-  password is kept in clear text because there is nothing to hash against.
-- Forgotten password (`login.html#reset`) issues a 6-digit one-time code valid
-  for 15 minutes, then lets the client set a new password. A static site cannot
-  send email, so the message a server would send is *previewed on the page*
-  instead of being delivered. To send it for real you need either a backend
-  endpoint or a third-party mailer (EmailJS, Formspree, AWS SES) with an
-  account key — the existing password is deliberately never emailed.
-- Do not use these pages for real client credentials. Making them functional
-  requires a backend (account storage, password hashing, sessions, HTTPS).
+- Registration → `auth.signUp` with the name/company/phone as user metadata; a
+  trigger on `auth.users` copies them into `public.clients` and assigns the
+  client ID (`BAC-1001`, `BAC-1002`, …) from a sequence.
+- Sign in → `auth.signInWithPassword`, then a redirect to `dashboard.html`.
+- Forgotten password → `auth.resetPasswordForEmail` sends a **real email** with
+  a recovery link back to `login.html#reset`, where `auth.updateUser` stores the
+  new password. The existing password is never emailed.
+- `dashboard.html` requires a session (otherwise it redirects to the login page)
+  and shows the client ID, contact details, verification state, account
+  reference and recent jobs.
+
+### One-time setup
+
+1. Run `supabase-setup.sql` in the Supabase SQL editor (tables, RLS policies,
+   trigger, and a back-fill for users who registered earlier).
+2. Authentication → Sign In / Providers → Email: with "Confirm email" on, a new
+   client must click the confirmation link before their first sign-in. Turn it
+   off for immediate access.
+3. Authentication → URL configuration: add the site URL(s) you serve from
+   (e.g. `http://localhost:3000`, the GitHub Pages URL) as redirect URLs so the
+   confirmation and password-reset links come back to the right place.
+
+### On the anon key in `js/supabase-config.js`
+
+The anon key is a publishable key designed to ship in the browser; it is not a
+secret. All protection comes from the Row Level Security policies in
+`supabase-setup.sql` (`auth.uid() = id`), which is why every client can only
+read their own row. Never put the service-role key in this folder.
 
 ## Colour
 
