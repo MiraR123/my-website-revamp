@@ -170,19 +170,25 @@
            fields.map(function (f) { return cell(f[1]); }).join(",") + "\r\n";
   }
 
-  function invoiceHtml(inv) {
-    return "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>" +
-      escape(inv.invoice_number) + "</title><style>" +
-      "body{font:15px/1.6 system-ui,sans-serif;margin:48px;color:#1b3a57}" +
-      "h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;color:#55708a;margin:0 0 28px}" +
-      "th,td{text-align:left;padding:8px 26px 8px 0;border-bottom:1px solid #dbe5ee}" +
-      "table{border-collapse:collapse}</style></head><body>" +
-      "<h1>Business Automation Centre</h1><h2>Invoice</h2><table>" +
-      invoiceFields(inv).map(function (f) {
-        return "<tr><th>" + escape(f[0]) + "</th><td>" +
-          escape(f[0] === "Invoice amount" ? money(inv.invoice_amount) : f[1]) + "</td></tr>";
-      }).join("") +
-      "</table></body></html>";
+  /* Word and Excel both open an HTML document when it is served under their
+     own MIME type, which is how a bank statement download is usually built:
+     no converter, and the file opens natively in either application. Excel
+     wants the amount as a bare number so it stays a value, not a label. */
+  function invoiceDocument(inv, forExcel) {
+    var rows = invoiceFields(inv).map(function (f) {
+      var value = f[0] !== "Invoice amount" ? f[1]
+        : forExcel ? f[1] : money(inv.invoice_amount);
+      return "<tr><th>" + escape(f[0]) + "</th><td>" + escape(value) + "</td></tr>";
+    }).join("");
+
+    return "<html xmlns:o=\"urn:schemas-microsoft-com:office:office\">" +
+      "<head><meta charset=\"utf-8\"><title>" + escape(inv.invoice_number) + "</title><style>" +
+      "body{font-family:Calibri,Arial,sans-serif;color:#1b3a57}" +
+      "h1{font-size:18pt;margin:0 0 2pt}h2{font-size:12pt;color:#55708a;margin:0 0 16pt}" +
+      "th,td{text-align:left;padding:6pt 20pt 6pt 0;border-bottom:1px solid #dbe5ee}" +
+      "</style></head><body>" +
+      "<h1>Business Automation Centre</h1><h2>Invoice</h2>" +
+      "<table>" + rows + "</table></body></html>";
   }
 
   /* A one-page PDF written by hand: five objects, then an xref table holding
@@ -252,7 +258,7 @@
       return;
     }
 
-    var formats = [["pdf", "PDF"], ["csv", "CSV"], ["html", "HTML"], ["print", "Print"]];
+    var formats = [["pdf", "PDF"], ["word", "Word"], ["excel", "Excel"], ["csv", "CSV"]];
 
     var rows = invoices.map(function (inv, index) {
       var actions = formats.map(function (f) {
@@ -281,16 +287,14 @@
       var name = String(inv.invoice_number || "invoice").replace(/[^\w.-]+/g, "-");
       var format = button.dataset.format;
 
-      if (format === "pdf") saveAs(name + ".pdf", "application/pdf", invoicePdf(inv));
-      else if (format === "csv") saveAs(name + ".csv", "text/csv", invoiceCsv(inv));
-      else if (format === "html") saveAs(name + ".html", "text/html", invoiceHtml(inv));
-      else {
-        var sheet = window.open("", "_blank");
-        if (!sheet) return;
-        sheet.document.write(invoiceHtml(inv));
-        sheet.document.close();
-        sheet.focus();
-        sheet.print();
+      if (format === "pdf") {
+        saveAs(name + ".pdf", "application/pdf", invoicePdf(inv));
+      } else if (format === "word") {
+        saveAs(name + ".doc", "application/msword", invoiceDocument(inv, false));
+      } else if (format === "excel") {
+        saveAs(name + ".xls", "application/vnd.ms-excel", invoiceDocument(inv, true));
+      } else {
+        saveAs(name + ".csv", "text/csv", invoiceCsv(inv));
       }
     });
   }
