@@ -163,13 +163,6 @@
     ];
   }
 
-  function invoiceCsv(inv) {
-    var cell = function (text) { return '"' + String(text).replace(/"/g, '""') + '"'; };
-    var fields = invoiceFields(inv);
-    return fields.map(function (f) { return cell(f[0]); }).join(",") + "\r\n" +
-           fields.map(function (f) { return cell(f[1]); }).join(",") + "\r\n";
-  }
-
   /* Word and Excel both open an HTML document when it is served under their
      own MIME type, which is how a bank statement download is usually built:
      no converter, and the file opens natively in either application. Excel
@@ -258,7 +251,7 @@
       return;
     }
 
-    var formats = [["pdf", "PDF"], ["word", "Word"], ["excel", "Excel"], ["csv", "CSV"]];
+    var formats = [["pdf", "PDF"], ["word", "Word"], ["excel", "Excel"], ["print", "Print"]];
 
     var rows = invoices.map(function (inv, index) {
       var actions = formats.map(function (f) {
@@ -294,7 +287,12 @@
       } else if (format === "excel") {
         saveAs(name + ".xls", "application/vnd.ms-excel", invoiceDocument(inv, true));
       } else {
-        saveAs(name + ".csv", "text/csv", invoiceCsv(inv));
+        var sheet = window.open("", "_blank");
+        if (!sheet) return;
+        sheet.document.write(invoiceDocument(inv, false));
+        sheet.document.close();
+        sheet.focus();
+        sheet.print();
       }
     });
   }
