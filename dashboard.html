@@ -7,7 +7,7 @@
 <meta name="description" content="Client dashboard for Business Automation Centre — your client ID, account details and recent jobs.">
 <meta name="robots" content="noindex">
 <link rel="icon" href="images/conamelogo.jpg" type="image/jpeg">
-<link rel="stylesheet" href="css/style.css?v=12">
+<link rel="stylesheet" href="css/style.css?v=13">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to main content</a>
@@ -113,15 +113,8 @@
         <div class="dash-stats" id="dc-stats"></div>
 
         <div class="panel stack-lg">
-          <div class="dash-panel-head">
-            <h2>Delivery challans</h2>
-            <div class="dash-filter" role="group" aria-label="Filter challans">
-              <button type="button" class="is-active" data-dc-filter="all">All</button>
-              <button type="button" data-dc-filter="unbilled">Unbilled</button>
-              <button type="button" data-dc-filter="billed">Billed</button>
-            </div>
-          </div>
-          <p class="tight">Every challan we have raised against your client ID, and whether it has been carried on to an invoice.</p>
+          <h2>Delivery challans</h2>
+          <p class="tight">Challans raised against your client ID that are still to be billed. They drop off this list once they appear on an invoice.</p>
           <div id="dc-list"><p class="tight">Loading…</p></div>
         </div>
       </div>
@@ -131,7 +124,7 @@
 
         <div class="panel stack-lg">
           <h2>Invoices</h2>
-          <p class="tight">Each invoice groups the billed challans for the period. Use <strong>View DCs</strong> to see the challan numbers it covers.</p>
+          <p class="tight">Invoices raised against your client ID. Download any of them as PDF, CSV or HTML, or print it straight away.</p>
           <div id="inv-list"><p class="tight">Loading…</p></div>
         </div>
       </div>
@@ -177,9 +170,9 @@
 
 <button class="to-top" type="button" aria-label="Back to top">&uarr;</button>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
-<script src="js/supabase-config.js?v=12"></script>
-<script src="js/supabase-auth.js?v=12"></script>
-<script src="js/script.js?v=12"></script>
-<script src="js/dashboard.js?v=12"></script>
+<script src="js/supabase-config.js?v=13"></script>
+<script src="js/supabase-auth.js?v=13"></script>
+<script src="js/script.js?v=13"></script>
+<script src="js/dashboard.js?v=13"></script>
 </body>
 </html>

@@ -53,19 +53,22 @@
         .catch(function () { return null; });
     },
 
-    /* Challans carry the invoice they were billed on, so one request feeds
-       both the DC tab and the DC list nested under each invoice. */
+    /* Unbilled challans only: a challan leaves this list the moment the
+       office links it to an invoice. */
     getChallans: function (userId) {
       return sb.from("delivery_challans")
-        .select("*, invoices ( invoice_number, invoice_date, status )")
+        .select("dc_number, dc_date, dc_description, dc_amount")
         .eq("client_id", userId)
+        .is("invoice_id", null)
         .order("dc_date", { ascending: false })
         .then(function (r) { return r.error ? null : r.data; })
         .catch(function () { return null; });
     },
 
     getInvoices: function (userId) {
-      return sb.from("invoices").select("*").eq("client_id", userId)
+      return sb.from("invoices")
+        .select("invoice_number, invoice_date, invoice_amount")
+        .eq("client_id", userId)
         .order("invoice_date", { ascending: false })
         .then(function (r) { return r.error ? null : r.data; })
         .catch(function () { return null; });

@@ -102,11 +102,9 @@
     if (document.getElementById(wanted)) show(wanted);
   }
 
-  /* delivery_challans rows carry invoice_id, so "billed" is derived from the
-     link rather than a separate status column that could drift out of step. */
-  function isBilled(dc) {
-    return Boolean(dc.invoice_id);
-  }
+  /* The customer code belongs to the account rather than to each row, so it
+     is read once from public.clients and printed against every line. */
+  var customerCode = "—";
 
   function renderChallans(list) {
     var host = document.getElementById("dc-list");
@@ -119,53 +117,119 @@
       return;
     }
 
-    var billed = list.filter(isBilled);
-    var unbilled = list.filter(function (dc) { return !isBilled(dc); });
-    var sum = function (rows) {
-      return rows.reduce(function (total, dc) { return total + Number(dc.amount || 0); }, 0);
-    };
-
+    var value = list.reduce(function (total, dc) { return total + Number(dc.dc_amount || 0); }, 0);
     stats(statHost, [
-      ["Challans uploaded", String(list.length)],
-      ["Billed", money(sum(billed))],
-      ["Unbilled", money(sum(unbilled))]
+      ["Challans pending billing", String(list.length)],
+      ["Value", money(value)]
     ]);
 
     if (!list.length) {
-      note(host, "No delivery challans yet. Each despatch we make against your client ID will appear here.");
+      note(host, "Nothing pending — every challan raised for you has been carried on to an invoice.");
       return;
     }
 
     var rows = list.map(function (dc) {
-      var invoice = dc.invoices;
-      return "<tr data-dc-state=\"" + (isBilled(dc) ? "billed" : "unbilled") + "\">" +
+      return "<tr>" +
         "<td><strong>" + escape(dc.dc_number) + "</strong></td>" +
         "<td>" + date(dc.dc_date) + "</td>" +
-        "<td>" + escape(dc.description || dc.service || "—") + "</td>" +
-        "<td>" + (dc.quantity == null ? "—" : escape(dc.quantity) + (dc.uom ? " " + escape(dc.uom) : "")) + "</td>" +
-        "<td class=\"num\">" + money(dc.amount) + "</td>" +
-        "<td><span class=\"job-status " + (isBilled(dc) ? "is-billed" : "is-unbilled") + "\">" +
-          (isBilled(dc) ? "Billed" : "Unbilled") + "</span></td>" +
-        "<td>" + (invoice ? escape(invoice.invoice_number) : "—") + "</td></tr>";
+        "<td>" + escape(dc.dc_description || "—") + "</td>" +
+        "<td class=\"num\">" + money(dc.dc_amount) + "</td>" +
+        "<td>" + escape(customerCode) + "</td></tr>";
     }).join("");
 
     host.innerHTML = "<div class=\"table-wrap\"><table class=\"dash-table\">" +
-      "<thead><tr><th>DC no.</th><th>Date</th><th>Description</th><th>Qty</th><th class=\"num\">Value</th><th>Status</th><th>Invoice</th></tr></thead>" +
+      "<thead><tr><th>DC no.</th><th>DC date</th><th>Description</th>" +
+      "<th class=\"num\">Amount</th><th>Customer code</th></tr></thead>" +
       "<tbody>" + rows + "</tbody></table></div>";
-
-    var filters = Array.prototype.slice.call(document.querySelectorAll("[data-dc-filter]"));
-    filters.forEach(function (button) {
-      button.addEventListener("click", function () {
-        var want = button.dataset.dcFilter;
-        filters.forEach(function (other) { other.classList.toggle("is-active", other === button); });
-        Array.prototype.forEach.call(host.querySelectorAll("tr[data-dc-state]"), function (row) {
-          row.hidden = want !== "all" && row.dataset.dcState !== want;
-        });
-      });
-    });
   }
 
-  function renderInvoices(invoices, challans) {
+  function saveAs(name, type, body) {
+    var url = URL.createObjectURL(new Blob([body], { type: type }));
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function invoiceFields(inv) {
+    return [
+      ["Invoice date", date(inv.invoice_date)],
+      ["Invoice number", String(inv.invoice_number || "")],
+      ["Customer code", customerCode],
+      ["Invoice amount", Number(inv.invoice_amount || 0).toFixed(2)]
+    ];
+  }
+
+  function invoiceCsv(inv) {
+    var cell = function (text) { return '"' + String(text).replace(/"/g, '""') + '"'; };
+    var fields = invoiceFields(inv);
+    return fields.map(function (f) { return cell(f[0]); }).join(",") + "\r\n" +
+           fields.map(function (f) { return cell(f[1]); }).join(",") + "\r\n";
+  }
+
+  function invoiceHtml(inv) {
+    return "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>" +
+      escape(inv.invoice_number) + "</title><style>" +
+      "body{font:15px/1.6 system-ui,sans-serif;margin:48px;color:#1b3a57}" +
+      "h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;color:#55708a;margin:0 0 28px}" +
+      "th,td{text-align:left;padding:8px 26px 8px 0;border-bottom:1px solid #dbe5ee}" +
+      "table{border-collapse:collapse}</style></head><body>" +
+      "<h1>Business Automation Centre</h1><h2>Invoice</h2><table>" +
+      invoiceFields(inv).map(function (f) {
+        return "<tr><th>" + escape(f[0]) + "</th><td>" +
+          escape(f[0] === "Invoice amount" ? money(inv.invoice_amount) : f[1]) + "</td></tr>";
+      }).join("") +
+      "</table></body></html>";
+  }
+
+  /* A one-page PDF written by hand: five objects, then an xref table holding
+     the byte offset of each, which is why the objects are concatenated in
+     order and measured as they go. Keeps a PDF library out of a static site
+     for what is four lines of text. */
+  function invoicePdf(inv) {
+    var lines = ["Business Automation Centre", "Invoice", ""].concat(
+      invoiceFields(inv).map(function (f) {
+        return f[0] + ": " + (f[0] === "Invoice amount" ? "INR " + f[1] : f[1]);
+      })
+    );
+
+    var text = lines.map(function (line, index) {
+      var size = index === 0 ? 16 : index === 1 ? 13 : 11;
+      return "BT /F1 " + size + " Tf 64 " + (720 - index * 26) + " Td (" +
+        String(line).replace(/([\\()])/g, "\\$1") + ") Tj ET";
+    }).join("\n");
+
+    var objects = [
+      "<< /Type /Catalog /Pages 2 0 R >>",
+      "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+      "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] " +
+        "/Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+      "<< /Length " + text.length + " >>\nstream\n" + text + "\nendstream",
+      "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
+    ];
+
+    var pdf = "%PDF-1.4\n";
+    var offsets = objects.map(function (body, index) {
+      var start = pdf.length;
+      pdf += (index + 1) + " 0 obj\n" + body + "\nendobj\n";
+      return start;
+    });
+
+    var xref = pdf.length;
+    pdf += "xref\n0 " + (objects.length + 1) + "\n0000000000 65535 f \n" +
+      offsets.map(function (offset) {
+        return ("0000000000" + offset).slice(-10) + " 00000 n \n";
+      }).join("") +
+      "trailer\n<< /Size " + (objects.length + 1) + " /Root 1 0 R >>\n" +
+      "startxref\n" + xref + "\n%%EOF";
+
+    return pdf;
+  }
+
+  function renderInvoices(invoices) {
     var host = document.getElementById("inv-list");
     var statHost = document.getElementById("inv-stats");
     if (!host) return;
@@ -176,65 +240,58 @@
       return;
     }
 
-    var outstanding = invoices.filter(function (inv) { return inv.status !== "paid" && inv.status !== "cancelled"; });
     stats(statHost, [
       ["Invoices raised", String(invoices.length)],
-      ["Invoiced value", money(invoices.reduce(function (t, i) { return t + Number(i.total || 0); }, 0))],
-      ["Outstanding", money(outstanding.reduce(function (t, i) { return t + Number(i.total || 0); }, 0))]
+      ["Invoiced value", money(invoices.reduce(function (t, i) {
+        return t + Number(i.invoice_amount || 0);
+      }, 0))]
     ]);
 
     if (!invoices.length) {
-      note(host, "No invoices raised yet. Once your billed challans are invoiced they will be listed here.");
+      note(host, "No invoices raised yet. Once your challans are billed they will be listed here.");
       return;
     }
 
-    var byInvoice = {};
-    (challans || []).forEach(function (dc) {
-      if (!dc.invoice_id) return;
-      (byInvoice[dc.invoice_id] = byInvoice[dc.invoice_id] || []).push(dc);
-    });
+    var formats = [["pdf", "PDF"], ["csv", "CSV"], ["html", "HTML"], ["print", "Print"]];
 
     var rows = invoices.map(function (inv, index) {
-      var dcs = byInvoice[inv.id] || [];
-      var detailId = "inv-dcs-" + index;
-      var detail = dcs.length
-        ? "<ul class=\"dc-chips\">" + dcs.map(function (dc) {
-            return "<li><strong>" + escape(dc.dc_number) + "</strong><span>" + date(dc.dc_date) +
-              " · " + money(dc.amount) + "</span></li>";
-          }).join("") + "</ul>"
-        : "<p class=\"tight\">No challans are linked to this invoice.</p>";
+      var actions = formats.map(function (f) {
+        return "<button type=\"button\" class=\"btn-link\" data-inv=\"" + index +
+          "\" data-format=\"" + f[0] + "\">" + f[1] + "</button>";
+      }).join("");
 
       return "<tr>" +
-          "<td><strong>" + escape(inv.invoice_number) + "</strong></td>" +
-          "<td>" + date(inv.invoice_date) + "</td>" +
-          "<td>" + date(inv.due_date) + "</td>" +
-          "<td class=\"num\">" + money(inv.amount) + "</td>" +
-          "<td class=\"num\">" + money(inv.tax_amount) + "</td>" +
-          "<td class=\"num\"><strong>" + money(inv.total) + "</strong></td>" +
-          "<td><span class=\"job-status is-" + escape((inv.status || "unpaid").replace(/\s+/g, "-")) + "\">" +
-            escape(inv.status || "unpaid") + "</span></td>" +
-          "<td><button type=\"button\" class=\"btn-link\" data-inv-toggle=\"" + detailId + "\" aria-expanded=\"false\">" +
-            "View DCs (" + dcs.length + ")</button></td>" +
-        "</tr>" +
-        "<tr class=\"dc-detail\" id=\"" + detailId + "\" hidden><td colspan=\"8\">" +
-          "<p class=\"mail-head\">Delivery challans on " + escape(inv.invoice_number) + "</p>" + detail +
-        "</td></tr>";
+        "<td>" + date(inv.invoice_date) + "</td>" +
+        "<td><strong>" + escape(inv.invoice_number) + "</strong></td>" +
+        "<td>" + escape(customerCode) + "</td>" +
+        "<td class=\"num\">" + money(inv.invoice_amount) + "</td>" +
+        "<td><span class=\"inv-download\">" + actions + "</span></td></tr>";
     }).join("");
 
     host.innerHTML = "<div class=\"table-wrap\"><table class=\"dash-table\">" +
-      "<thead><tr><th>Invoice</th><th>Date</th><th>Due</th><th class=\"num\">Value</th><th class=\"num\">Tax</th>" +
-      "<th class=\"num\">Total</th><th>Status</th><th>Challans</th></tr></thead>" +
+      "<thead><tr><th>Invoice date</th><th>Invoice number</th><th>Customer code</th>" +
+      "<th class=\"num\">Invoice amount</th><th>Download</th></tr></thead>" +
       "<tbody>" + rows + "</tbody></table></div>";
 
-    Array.prototype.forEach.call(host.querySelectorAll("[data-inv-toggle]"), function (button) {
-      button.addEventListener("click", function () {
-        var row = document.getElementById(button.dataset.invToggle);
-        if (!row) return;
-        row.hidden = !row.hidden;
-        button.setAttribute("aria-expanded", row.hidden ? "false" : "true");
-        button.textContent = (row.hidden ? "View DCs (" : "Hide DCs (") +
-          button.textContent.replace(/\D+/g, "") + ")";
-      });
+    host.addEventListener("click", function (event) {
+      var button = event.target.closest("[data-format]");
+      if (!button) return;
+
+      var inv = invoices[Number(button.dataset.inv)];
+      var name = String(inv.invoice_number || "invoice").replace(/[^\w.-]+/g, "-");
+      var format = button.dataset.format;
+
+      if (format === "pdf") saveAs(name + ".pdf", "application/pdf", invoicePdf(inv));
+      else if (format === "csv") saveAs(name + ".csv", "text/csv", invoiceCsv(inv));
+      else if (format === "html") saveAs(name + ".html", "text/html", invoiceHtml(inv));
+      else {
+        var sheet = window.open("", "_blank");
+        if (!sheet) return;
+        sheet.document.write(invoiceHtml(inv));
+        sheet.document.close();
+        sheet.focus();
+        sheet.print();
+      }
     });
   }
 
@@ -245,7 +302,8 @@
     var owner = (profile && (profile.company || profile.full_name)) || meta.company || meta.full_name;
     set("heading", owner ? owner + " — dashboard" : "Client dashboard");
     set("greeting", "Welcome back, " + name + ".");
-    set("client-code", (profile && profile.client_code) || "Pending");
+    customerCode = (profile && profile.client_code) || "Pending";
+    set("client-code", customerCode);
     set("full_name", (profile && profile.full_name) || meta.full_name || "—");
     set("company", (profile && profile.company) || meta.company || "—");
     set("email", user.email || "—");
@@ -286,10 +344,8 @@
       render(user, profile);
       return Promise.all([
         auth.getJobs(user.id).then(renderJobs),
-        Promise.all([auth.getChallans(user.id), auth.getInvoices(user.id)]).then(function (r) {
-          renderChallans(r[0]);
-          renderInvoices(r[1], r[0]);
-        })
+        auth.getChallans(user.id).then(renderChallans),
+        auth.getInvoices(user.id).then(renderInvoices)
       ]);
     });
   });
