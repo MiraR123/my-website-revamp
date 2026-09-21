@@ -105,6 +105,7 @@
   /* The customer code belongs to the account rather than to each row, so it
      is read once from public.clients and printed against every line. */
   var customerCode = "—";
+  var clientId = "";
 
   function renderChallans(list) {
     var host = document.getElementById("dc-list");
@@ -253,6 +254,13 @@
 
     var formats = [["pdf", "PDF"], ["word", "Word"], ["excel", "Excel"], ["print", "Print"]];
 
+    /* Storage keeps one folder per client and names each file after the
+       invoice number, so a row without an explicit invoice_file still
+       resolves as long as the office follows that convention. */
+    function filePath(inv, name) {
+      return inv.invoice_file || (clientId + "/" + name + ".pdf");
+    }
+
     var rows = invoices.map(function (inv, index) {
       var menuId = "inv-formats-" + index;
       var actions = formats.map(function (f) {
@@ -312,18 +320,28 @@
       var format = button.dataset.format;
 
       if (format === "pdf") {
-        saveAs(name + ".pdf", "application/pdf", invoicePdf(inv));
+        button.disabled = true;
+        auth.getInvoiceFileUrl(filePath(inv, name), name + ".pdf").then(function (url) {
+          button.disabled = false;
+          if (url) { location.href = url; return; }
+          saveAs(name + ".pdf", "application/pdf", invoicePdf(inv));
+        });
       } else if (format === "word") {
         saveAs(name + ".doc", "application/msword", invoiceDocument(inv, false));
       } else if (format === "excel") {
         saveAs(name + ".xls", "application/vnd.ms-excel", invoiceDocument(inv, true));
       } else {
-        var sheet = window.open("", "_blank");
-        if (!sheet) return;
-        sheet.document.write(invoiceDocument(inv, false));
-        sheet.document.close();
-        sheet.focus();
-        sheet.print();
+        button.disabled = true;
+        auth.getInvoiceFileUrl(filePath(inv, name)).then(function (url) {
+          button.disabled = false;
+          if (url) { window.open(url, "_blank"); return; }
+          var sheet = window.open("", "_blank");
+          if (!sheet) return;
+          sheet.document.write(invoiceDocument(inv, false));
+          sheet.document.close();
+          sheet.focus();
+          sheet.print();
+        });
       }
     });
   }
@@ -372,6 +390,7 @@
       return;
     }
     var user = session.user;
+    clientId = user.id;
     tabs();
     auth.getProfile(user.id).then(function (profile) {
       render(user, profile);

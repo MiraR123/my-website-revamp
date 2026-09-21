@@ -67,10 +67,22 @@
 
     getInvoices: function (userId) {
       return sb.from("invoices")
-        .select("invoice_number, invoice_date, invoice_amount")
+        .select("invoice_number, invoice_date, invoice_amount, invoice_file")
         .eq("client_id", userId)
         .order("invoice_date", { ascending: false })
         .then(function (r) { return r.error ? null : r.data; })
+        .catch(function () { return null; });
+    },
+
+    /* The office uploads the real invoice document to a private bucket, one
+       folder per client, so the file is reached with a short-lived signed
+       URL rather than a public link. Returns null when nothing is stored
+       yet and the dashboard falls back to the generated document. */
+    getInvoiceFileUrl: function (path, downloadName) {
+      if (!path) return Promise.resolve(null);
+      return sb.storage.from(cfg.invoiceBucket || "invoices")
+        .createSignedUrl(path, 60, downloadName ? { download: downloadName } : undefined)
+        .then(function (r) { return r.error ? null : r.data.signedUrl; })
         .catch(function () { return null; });
     }
   };
