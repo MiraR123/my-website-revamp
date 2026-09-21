@@ -39,3 +39,12 @@ create policy "Clients read their own invoice files"
 
 -- Uploads stay with the office (Supabase dashboard or a service-role
 -- script): no insert/update/delete policy is granted to clients.
+
+-- 4. Helper: the exact file name to upload for each invoice ---------------
+-- Upload each PDF into the "invoices" bucket at the path this returns.
+select i.invoice_number,
+       c.client_code,
+       i.client_id || '/' || i.invoice_number || '.pdf' as storage_path
+from public.invoices i
+join public.clients c on c.id = i.client_id
+order by i.invoice_date desc;
