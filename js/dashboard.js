@@ -132,14 +132,14 @@
       return "<tr>" +
         "<td><strong>" + escape(dc.dc_number) + "</strong></td>" +
         "<td>" + date(dc.dc_date) + "</td>" +
+        "<td>" + escape(customerCode) + "</td>" +
         "<td>" + escape(dc.dc_description || "—") + "</td>" +
-        "<td class=\"num\">" + money(dc.dc_amount) + "</td>" +
-        "<td>" + escape(customerCode) + "</td></tr>";
+        "<td class=\"num\">" + money(dc.dc_amount) + "</td></tr>";
     }).join("");
 
     host.innerHTML = "<div class=\"table-wrap\"><table class=\"dash-table\">" +
-      "<thead><tr><th>DC no.</th><th>DC date</th><th>Description</th>" +
-      "<th class=\"num\">Amount</th><th>Customer code</th></tr></thead>" +
+      "<thead><tr><th>DC no.</th><th>DC date</th><th>Customer code</th>" +
+      "<th>Description</th><th class=\"num\">Amount</th></tr></thead>" +
       "<tbody>" + rows + "</tbody></table></div>";
   }
 
