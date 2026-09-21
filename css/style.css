@@ -659,6 +659,14 @@ address { font-style: normal; }
 }
 .dash-id .btn-outline { border-color: rgba(255, 255, 255, .55); color: #fff; }
 .dash-id .btn-outline:hover { background: rgba(255, 255, 255, .14); }
+/* The dashboard is a working screen rather than a marketing page: the hero,
+   section padding and the footer link columns all give way to the tables. */
+.page-dashboard .page-hero { padding: var(--space-6) 0; }
+.page-dashboard .page-hero + .section { padding-top: var(--space-6); padding-bottom: var(--space-6); }
+.page-dashboard .site-footer { padding-top: 0; }
+.page-dashboard .footer-grid { display: none; }
+.page-dashboard .footer-bottom { margin-top: 0; border-top: 0; padding: var(--space-4) 0; }
+
 .page-hero-meta .hero-signout { padding: 0; background: none; border: 0; }
 .page-hero-meta .hero-signout .btn-signout { padding: 8px 20px; font-size: .88rem; }
 .dash-list { display: grid; gap: 2px; margin-top: var(--space-4); }
@@ -687,10 +695,6 @@ address { font-style: normal; }
   text-transform: capitalize;
 }
 .dash-table td.num, .dash-table th.num { text-align: right; white-space: nowrap; }
-.job-status.is-billed, .job-status.is-paid { background: rgba(31, 138, 112, .12); color: #1f6f5c; }
-.job-status.is-unbilled, .job-status.is-unpaid { background: rgba(196, 122, 20, .14); color: #8a5a06; }
-.job-status.is-cancelled { background: rgba(120, 120, 120, .14); color: #555; }
-
 .dash-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -715,26 +719,6 @@ address { font-style: normal; }
 .dash-tabs button:hover { background: rgba(51, 102, 153, .08); }
 .dash-tabs button.is-active { background: var(--blue); color: #fff; box-shadow: 0 6px 16px rgba(51, 102, 153, .25); }
 .dash-panel[hidden] { display: none; }
-
-.dash-panel-head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  align-items: center;
-  justify-content: space-between;
-}
-.dash-filter { display: flex; gap: 6px; }
-.dash-filter button {
-  padding: 7px 14px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: #fff;
-  font: inherit;
-  font-size: .88rem;
-  color: var(--navy);
-  cursor: pointer;
-}
-.dash-filter button.is-active { background: var(--blue); border-color: var(--blue); color: #fff; }
 
 .dash-stats {
   display: grid;
@@ -761,23 +745,46 @@ address { font-style: normal; }
   text-decoration: underline;
   cursor: pointer;
 }
-.dc-detail > td { background: var(--surface-alt); }
-.dc-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: var(--space-3) 0 0;
-  padding: 0;
-  list-style: none;
+.inv-download { position: relative; display: inline-block; }
+.inv-download > .btn-sm {
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--blue);
+  cursor: pointer;
 }
-.dc-chips li {
-  padding: 8px 14px;
+.inv-download > .btn-sm:hover { background: var(--surface-alt); }
+.inv-formats {
+  position: absolute;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+  margin-top: 6px;
+  padding: 6px;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm, 10px);
+  box-shadow: 0 12px 28px rgba(16, 42, 67, .16);
 }
-.dc-chips strong { display: block; color: var(--navy); }
-.dc-chips span { color: var(--muted); font-size: .84rem; }
+.inv-formats[hidden] { display: none; }
+.inv-formats button {
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: .9rem;
+  color: var(--navy);
+  text-align: left;
+  cursor: pointer;
+}
+.inv-formats button:hover { background: var(--surface-alt); color: var(--blue); }
 
 @media (max-width: 860px) {
   .dash-grid { grid-template-columns: 1fr; }
