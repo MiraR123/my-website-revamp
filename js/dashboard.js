@@ -254,8 +254,9 @@
     var formats = [["pdf", "PDF"], ["word", "Word"], ["excel", "Excel"], ["print", "Print"]];
 
     var rows = invoices.map(function (inv, index) {
+      var menuId = "inv-formats-" + index;
       var actions = formats.map(function (f) {
-        return "<button type=\"button\" class=\"btn-link\" data-inv=\"" + index +
+        return "<button type=\"button\" role=\"menuitem\" data-inv=\"" + index +
           "\" data-format=\"" + f[0] + "\">" + f[1] + "</button>";
       }).join("");
 
@@ -264,7 +265,13 @@
         "<td><strong>" + escape(inv.invoice_number) + "</strong></td>" +
         "<td>" + escape(customerCode) + "</td>" +
         "<td class=\"num\">" + money(inv.invoice_amount) + "</td>" +
-        "<td><span class=\"inv-download\">" + actions + "</span></td></tr>";
+        "<td><span class=\"inv-download\">" +
+          "<button type=\"button\" class=\"btn btn-sm\" data-menu=\"" + menuId + "\"" +
+            " aria-expanded=\"false\" aria-haspopup=\"true\">Download &#9662;</button>" +
+          "<span class=\"inv-formats\" id=\"" + menuId + "\" role=\"menu\" hidden>" +
+            actions +
+          "</span>" +
+        "</span></td></tr>";
     }).join("");
 
     host.innerHTML = "<div class=\"table-wrap\"><table class=\"dash-table\">" +
@@ -272,9 +279,33 @@
       "<th class=\"num\">Invoice amount</th><th>Download</th></tr></thead>" +
       "<tbody>" + rows + "</tbody></table></div>";
 
+    function closeMenus(except) {
+      Array.prototype.forEach.call(host.querySelectorAll("[data-menu]"), function (toggle) {
+        if (toggle === except) return;
+        toggle.setAttribute("aria-expanded", "false");
+        var menu = document.getElementById(toggle.dataset.menu);
+        if (menu) menu.hidden = true;
+      });
+    }
+
+    document.addEventListener("click", function (event) {
+      if (!event.target.closest(".inv-download")) closeMenus(null);
+    });
+
     host.addEventListener("click", function (event) {
+      var toggle = event.target.closest("[data-menu]");
+      if (toggle) {
+        var menu = document.getElementById(toggle.dataset.menu);
+        var open = menu && menu.hidden;
+        closeMenus(toggle);
+        if (menu) menu.hidden = !open;
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        return;
+      }
+
       var button = event.target.closest("[data-format]");
       if (!button) return;
+      closeMenus(null);
 
       var inv = invoices[Number(button.dataset.inv)];
       var name = String(inv.invoice_number || "invoice").replace(/[^\w.-]+/g, "-");

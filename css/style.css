@@ -737,8 +737,46 @@ address { font-style: normal; }
   text-decoration: underline;
   cursor: pointer;
 }
-.inv-download { display: flex; flex-wrap: wrap; gap: 4px 14px; }
-.inv-download .btn-link { font-size: .88rem; }
+.inv-download { position: relative; display: inline-block; }
+.inv-download > .btn-sm {
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--blue);
+  cursor: pointer;
+}
+.inv-download > .btn-sm:hover { background: var(--surface-alt); }
+.inv-formats {
+  position: absolute;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+  margin-top: 6px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 10px);
+  box-shadow: 0 12px 28px rgba(16, 42, 67, .16);
+}
+.inv-formats[hidden] { display: none; }
+.inv-formats button {
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: .9rem;
+  color: var(--navy);
+  text-align: left;
+  cursor: pointer;
+}
+.inv-formats button:hover { background: var(--surface-alt); color: var(--blue); }
 
 @media (max-width: 860px) {
   .dash-grid { grid-template-columns: 1fr; }
