@@ -11,6 +11,10 @@
 -- The DC tab lists unbilled challans only, which stays `invoice_id is null`:
 -- linking a challan to an invoice is what takes it off that list.
 
+-- The summary view reads the columns being changed, so it goes first and is
+-- recreated at the end.
+drop view if exists public.invoice_summary;
+
 -- ---------------------------------------------------------------- challans
 alter table public.delivery_challans rename column description to dc_description;
 alter table public.delivery_challans rename column amount      to dc_amount;
@@ -31,8 +35,6 @@ alter table public.invoices
 
 alter table public.invoices rename column amount to invoice_amount;
 
--- the summary view referenced the dropped columns
-drop view if exists public.invoice_summary;
 create or replace view public.invoice_summary as
 select i.id,
        i.client_id,
