@@ -55,11 +55,6 @@
       "<tbody>" + rows + "</tbody></table></div>";
   }
 
-  function money(value) {
-    var number = Number(value || 0);
-    return "₹" + number.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-
   function escape(value) {
     return String(value == null ? "" : value).replace(/[&<>"]/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c];
@@ -105,94 +100,16 @@
   /* The customer code belongs to the account rather than to each row, so it
      is read once from public.clients and printed against every line. */
   var customerCode = "—";
-
-  function renderChallans(list) {
-    var host = document.getElementById("dc-list");
-    var statHost = document.getElementById("dc-stats");
-    if (!host) return;
-
-    if (list === null) {
-      stats(statHost, []);
-      note(host, "Delivery challan records are not switched on for this account yet. Call the office and we will enable them.");
-      return;
-    }
-
-    var value = list.reduce(function (total, dc) { return total + Number(dc.dc_amount || 0); }, 0);
-    stats(statHost, [
-      ["Challans pending billing", String(list.length)],
-      ["Value", money(value)]
-    ]);
-
-    if (!list.length) {
-      note(host, "Nothing pending — every challan raised for you has been carried on to an invoice.");
-      return;
-    }
-
-    var rows = list.map(function (dc) {
-      return "<tr>" +
-        "<td><strong>" + escape(dc.dc_number) + "</strong></td>" +
-        "<td>" + date(dc.dc_date) + "</td>" +
-        "<td>" + escape(customerCode) + "</td>" +
-        "<td>" + escape(dc.dc_description || "—") + "</td>" +
-        "<td class=\"num\">" + money(dc.dc_amount) + "</td></tr>";
-    }).join("");
-
-    host.innerHTML = "<div class=\"table-wrap\"><table class=\"dash-table\">" +
-      "<thead><tr><th>DC no.</th><th>DC date</th><th>Customer code</th>" +
-      "<th>Description</th><th class=\"num\">Amount</th></tr></thead>" +
-      "<tbody>" + rows + "</tbody></table></div>";
-  }
-
-  function saveAs(name, type, body) {
-    var url = URL.createObjectURL(new Blob([body], { type: type }));
-    var link = document.createElement("a");
-    link.href = url;
-    link.download = name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-  }
-
-  function invoiceFields(inv) {
-    return [
-      ["Invoice date", date(inv.invoice_date)],
-      ["Invoice number", String(inv.invoice_number || "")],
-      ["Customer code", customerCode],
-      ["Invoice amount", Number(inv.invoice_amount || 0).toFixed(2)]
-    ];
-  }
-
-  /* Word and Excel both open an HTML document when it is served under their
-     own MIME type, which is how a bank statement download is usually built:
-     no converter, and the file opens natively in either application. Excel
-     wants the amount as a bare number so it stays a value, not a label. */
-  function invoiceDocument(inv, forExcel) {
-    var rows = invoiceFields(inv).map(function (f) {
-      var value = f[0] !== "Invoice amount" ? f[1]
-        : forExcel ? f[1] : money(inv.invoice_amount);
-      return "<tr><th>" + escape(f[0]) + "</th><td>" + escape(value) + "</td></tr>";
-    }).join("");
-
-    return "<html xmlns:o=\"urn:schemas-microsoft-com:office:office\">" +
-      "<head><meta charset=\"utf-8\"><title>" + escape(inv.invoice_number) + "</title><style>" +
-      "body{font-family:Calibri,Arial,sans-serif;color:#1b3a57}" +
-      "h1{font-size:18pt;margin:0 0 2pt}h2{font-size:12pt;color:#55708a;margin:0 0 16pt}" +
-      "th,td{text-align:left;padding:6pt 20pt 6pt 0;border-bottom:1px solid #dbe5ee}" +
-      "</style></head><body>" +
-      "<h1>Business Automation Centre</h1><h2>Invoice</h2>" +
-      "<table>" + rows + "</table></body></html>";
-  }
+  var clientId = "";
+  var isAdmin = false;
 
   /* A one-page PDF written by hand: five objects, then an xref table holding
      the byte offset of each, which is why the objects are concatenated in
      order and measured as they go. Keeps a PDF library out of a static site
-     for what is four lines of text. */
-  function invoicePdf(inv) {
-    var lines = ["Business Automation Centre", "Invoice", ""].concat(
-      invoiceFields(inv).map(function (f) {
-        return f[0] + ": " + (f[0] === "Invoice amount" ? "INR " + f[1] : f[1]);
-      })
+     for what is three lines of text. */
+  function simplePdf(heading, fields) {
+    var lines = ["Business Automation Centre", heading, ""].concat(
+      fields.map(function (f) { return f[0] + ": " + f[1]; })
     );
 
     var text = lines.map(function (line, index) {
@@ -228,104 +145,112 @@
     return pdf;
   }
 
-  function renderInvoices(invoices) {
-    var host = document.getElementById("inv-list");
-    var statHost = document.getElementById("inv-stats");
+  function saveAs(name, type, body) {
+    var url = URL.createObjectURL(new Blob([body], { type: type }));
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  /* A client's own code comes from their profile; an admin sees rows from
+     every client, each carrying its own code through the join. */
+  function code(row) {
+    return (row.clients && row.clients.client_code) || customerCode;
+  }
+
+  /* Both tabs are the same table: reference, date, customer code and a PDF
+     of the office's own document. Storage keeps one folder per client with
+     the file named after the reference, so a row needs no extra bookkeeping;
+     where nothing has been uploaded the row prints a generated PDF instead. */
+  function renderDocuments(opts, rows) {
+    var host = document.getElementById(opts.host);
+    var statHost = document.getElementById(opts.stats);
     if (!host) return;
 
-    if (invoices === null) {
+    if (rows === null) {
       stats(statHost, []);
-      note(host, "Invoice records are not switched on for this account yet. Call the office and we will enable them.");
+      note(host, opts.offText);
       return;
     }
 
-    stats(statHost, [
-      ["Invoices raised", String(invoices.length)],
-      ["Invoiced value", money(invoices.reduce(function (t, i) {
-        return t + Number(i.invoice_amount || 0);
-      }, 0))]
-    ]);
+    stats(statHost, [[opts.statLabel, String(rows.length)]]);
 
-    if (!invoices.length) {
-      note(host, "No invoices raised yet. Once your challans are billed they will be listed here.");
+    if (!rows.length) {
+      note(host, opts.emptyText);
       return;
     }
 
-    var formats = [["pdf", "PDF"], ["word", "Word"], ["excel", "Excel"], ["print", "Print"]];
-
-    var rows = invoices.map(function (inv, index) {
-      var menuId = "inv-formats-" + index;
-      var actions = formats.map(function (f) {
-        return "<button type=\"button\" role=\"menuitem\" data-inv=\"" + index +
-          "\" data-format=\"" + f[0] + "\">" + f[1] + "</button>";
-      }).join("");
-
+    var body = rows.map(function (row, index) {
       return "<tr>" +
-        "<td>" + date(inv.invoice_date) + "</td>" +
-        "<td><strong>" + escape(inv.invoice_number) + "</strong></td>" +
-        "<td>" + escape(customerCode) + "</td>" +
-        "<td class=\"num\">" + money(inv.invoice_amount) + "</td>" +
-        "<td><span class=\"inv-download\">" +
-          "<button type=\"button\" class=\"btn btn-sm\" data-menu=\"" + menuId + "\"" +
-            " aria-expanded=\"false\" aria-haspopup=\"true\">Download &#9662;</button>" +
-          "<span class=\"inv-formats\" id=\"" + menuId + "\" role=\"menu\" hidden>" +
-            actions +
-          "</span>" +
-        "</span></td></tr>";
+        "<td><strong>" + escape(row[opts.numberKey]) + "</strong></td>" +
+        "<td>" + date(row[opts.dateKey]) + "</td>" +
+        "<td>" + escape(code(row)) + "</td>" +
+        "<td><button type=\"button\" class=\"btn btn-sm\" data-row=\"" + index +
+          "\">Download PDF</button></td></tr>";
     }).join("");
 
     host.innerHTML = "<div class=\"table-wrap\"><table class=\"dash-table\">" +
-      "<thead><tr><th>Invoice date</th><th>Invoice number</th><th>Customer code</th>" +
-      "<th class=\"num\">Invoice amount</th><th>Download</th></tr></thead>" +
-      "<tbody>" + rows + "</tbody></table></div>";
-
-    function closeMenus(except) {
-      Array.prototype.forEach.call(host.querySelectorAll("[data-menu]"), function (toggle) {
-        if (toggle === except) return;
-        toggle.setAttribute("aria-expanded", "false");
-        var menu = document.getElementById(toggle.dataset.menu);
-        if (menu) menu.hidden = true;
-      });
-    }
-
-    document.addEventListener("click", function (event) {
-      if (!event.target.closest(".inv-download")) closeMenus(null);
-    });
+      "<thead><tr><th>" + escape(opts.numberLabel) + "</th><th>" + escape(opts.dateLabel) +
+      "</th><th>Customer code</th><th>Download</th></tr></thead>" +
+      "<tbody>" + body + "</tbody></table></div>";
 
     host.addEventListener("click", function (event) {
-      var toggle = event.target.closest("[data-menu]");
-      if (toggle) {
-        var menu = document.getElementById(toggle.dataset.menu);
-        var open = menu && menu.hidden;
-        closeMenus(toggle);
-        if (menu) menu.hidden = !open;
-        toggle.setAttribute("aria-expanded", open ? "true" : "false");
-        return;
-      }
-
-      var button = event.target.closest("[data-format]");
+      var button = event.target.closest("[data-row]");
       if (!button) return;
-      closeMenus(null);
 
-      var inv = invoices[Number(button.dataset.inv)];
-      var name = String(inv.invoice_number || "invoice").replace(/[^\w.-]+/g, "-");
-      var format = button.dataset.format;
+      var row = rows[Number(button.dataset.row)];
+      var name = String(row[opts.numberKey] || opts.heading).replace(/[^\w.-]+/g, "-");
+      var path = row[opts.fileKey] || ((row.client_id || clientId) + "/" + name + ".pdf");
 
-      if (format === "pdf") {
-        saveAs(name + ".pdf", "application/pdf", invoicePdf(inv));
-      } else if (format === "word") {
-        saveAs(name + ".doc", "application/msword", invoiceDocument(inv, false));
-      } else if (format === "excel") {
-        saveAs(name + ".xls", "application/vnd.ms-excel", invoiceDocument(inv, true));
-      } else {
-        var sheet = window.open("", "_blank");
-        if (!sheet) return;
-        sheet.document.write(invoiceDocument(inv, false));
-        sheet.document.close();
-        sheet.focus();
-        sheet.print();
-      }
+      button.disabled = true;
+      auth.getFileUrl(opts.bucket, path, name + ".pdf").then(function (url) {
+        button.disabled = false;
+        if (url) { location.href = url; return; }
+        saveAs(name + ".pdf", "application/pdf", simplePdf(opts.heading, [
+          [opts.numberLabel, String(row[opts.numberKey] || "")],
+          [opts.dateLabel, date(row[opts.dateKey])],
+          ["Customer code", code(row)]
+        ]));
+      });
     });
+  }
+
+  function renderChallans(list) {
+    renderDocuments({
+      host: "dc-list",
+      stats: "dc-stats",
+      heading: "Delivery challan",
+      numberKey: "dc_number",
+      numberLabel: "DC no.",
+      dateKey: "dc_date",
+      dateLabel: "DC date",
+      fileKey: "dc_file",
+      bucket: cfg.challanBucket || "challans",
+      statLabel: "Challans pending billing",
+      offText: "No delivery challans available.",
+      emptyText: "No delivery challans available."
+    }, list);
+  }
+
+  function renderInvoices(list) {
+    renderDocuments({
+      host: "inv-list",
+      stats: "inv-stats",
+      heading: "Invoice",
+      numberKey: "invoice_number",
+      numberLabel: "Invoice no.",
+      dateKey: "invoice_date",
+      dateLabel: "Invoice date",
+      fileKey: "invoice_file",
+      bucket: cfg.invoiceBucket || "invoices",
+      statLabel: "Invoices raised",
+      offText: "No invoices available.",
+      emptyText: "No invoices available."
+    }, list);
   }
 
   function render(user, profile) {
@@ -352,6 +277,96 @@
     }
   }
 
+  function status(box, text, tone) {
+    if (!box) return;
+    box.className = "form-status is-" + (tone || "info");
+    box.hidden = false;
+    box.textContent = text;
+  }
+
+  /* The office opens the account with a temporary password, so the rest of
+     the dashboard stays out of reach until the client has replaced it. The
+     flag itself lives in public.clients and is cleared by the database. */
+  function firstLoginGate() {
+    var panel = document.getElementById("first-login");
+    var form = document.getElementById("first-login-form");
+    if (!panel || !form) return;
+
+    var box = document.getElementById("first-login-status");
+    var hidden = Array.prototype.slice.call(document.querySelectorAll(".dash-tabs, .dash-panel"));
+    hidden.forEach(function (node) { node.hidden = true; });
+    panel.hidden = false;
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var password = document.getElementById("new-password").value;
+      if (password.length < 8) return status(box, "Use at least 8 characters.", "error");
+      if (password !== document.getElementById("new-password-2").value) {
+        return status(box, "Both passwords must match.", "error");
+      }
+
+      status(box, "Saving…", "info");
+      auth.changePassword(password).then(function (r) {
+        if (r.error) return status(box, r.error, "error");
+        panel.hidden = true;
+        hidden.forEach(function (node) {
+          node.hidden = node.classList.contains("dash-panel") && node.id !== "panel-account";
+        });
+        fail("Password updated. Welcome aboard.", "success");
+      });
+    });
+  }
+
+  function renderClients(rows) {
+    var host = document.getElementById("client-list");
+    if (!host) return;
+    if (!rows || !rows.length) return note(host, "No client accounts yet.");
+
+    var body = rows.map(function (row) {
+      return "<tr><td><strong>" + escape(row.client_code) + "</strong></td><td>" +
+        escape(row.company || row.full_name || "—") + "</td><td>" + escape(row.email || "—") +
+        "</td><td>" + (row.must_change_password ? "Temporary password" : "Active") + "</td></tr>";
+    }).join("");
+
+    host.innerHTML = "<div class=\"table-wrap\"><table class=\"dash-table\">" +
+      "<thead><tr><th>Client ID</th><th>Client</th><th>Email</th><th>Login</th></tr></thead>" +
+      "<tbody>" + body + "</tbody></table></div>";
+  }
+
+  function adminPanel() {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-admin-only]"), function (node) {
+      node.hidden = false;
+    });
+
+    auth.getAllClients().then(renderClients);
+
+    var form = document.getElementById("new-client-form");
+    if (!form) return;
+    var box = document.getElementById("new-client-status");
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var button = form.querySelector("button[type=submit]");
+      button.disabled = true;
+      status(box, "Creating the login…", "info");
+
+      auth.createClientLogin({
+        email: document.getElementById("client-email").value.trim(),
+        full_name: document.getElementById("client-name").value.trim(),
+        company: document.getElementById("client-company").value.trim(),
+        phone: document.getElementById("client-phone").value.trim()
+      }).then(function (r) {
+        button.disabled = false;
+        if (!r || r.error) return status(box, (r && r.error) || "Could not create the login.", "error");
+        status(box, "Account " + (r.client_code || "") + " created for " + r.email +
+          ". Temporary password: " + r.password +
+          " — share it with the client; they must change it at first sign-in.", "success");
+        form.reset();
+        auth.getAllClients().then(renderClients);
+      });
+    });
+  }
+
   if (!auth) {
     fail("Could not reach the accounts service. Check your connection and reload the page.");
     return;
@@ -372,14 +387,27 @@
       return;
     }
     var user = session.user;
+    clientId = user.id;
     tabs();
     auth.getProfile(user.id).then(function (profile) {
       render(user, profile);
+      isAdmin = !!(profile && profile.role === "admin");
+
+      if (profile && profile.must_change_password) {
+        firstLoginGate();
+        return;
+      }
+      if (isAdmin) adminPanel();
+
       return Promise.all([
         auth.getJobs(user.id).then(renderJobs),
-        auth.getChallans(user.id).then(renderChallans),
-        auth.getInvoices(user.id).then(renderInvoices)
+        auth.getChallans(user.id, isAdmin).then(renderChallans),
+        auth.getInvoices(user.id, isAdmin).then(renderInvoices)
       ]);
+    }).catch(function () {
+      /* Never leave the placeholders reading "Loading…" when a lookup breaks. */
+      renderChallans([]);
+      renderInvoices([]);
     });
   });
 })();
