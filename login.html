@@ -57,7 +57,6 @@
         <div class="auth-card">
           <div class="auth-tabs" role="tablist" aria-label="Client account">
             <button class="is-active" type="button" role="tab" id="tab-signin" aria-selected="true" aria-controls="panel-signin">Existing client<span>Sign in</span></button>
-            <button type="button" role="tab" id="tab-register" aria-selected="false" aria-controls="panel-register">New client<span>Registration</span></button>
           </div>
 
           <div class="auth-panel" id="panel-signin" role="tabpanel" aria-labelledby="tab-signin">
@@ -82,7 +81,7 @@
             </label>
             <div class="auth-actions">
               <button class="btn btn-primary" type="submit">Sign in</button>
-              <button class="btn btn-outline" type="button" data-open-tab="tab-register">New client? Register here</button>
+              <a class="btn btn-outline" href="contact.html">New client? Ask us for a login</a>
             </div>
             <p class="form-status" role="status" aria-live="polite"></p>
             <p class="auth-alt"><a href="#reset" data-open-reset>Forgotten your password?</a> We will email a reset link to your registered address. You can also call <a href="tel:+914424840889">+91 - 44 - 2484 0889</a>.</p>
@@ -144,60 +143,6 @@
           </div>
           </div>
 
-          <div class="auth-panel" id="panel-register" role="tabpanel" aria-labelledby="tab-register" hidden>
-          <h2>New client registration</h2>
-          <p class="lead">It takes a minute — we will confirm your account by phone or email.</p>
-          <p class="form-note" data-demo-note>Local demo: this front-end stores accounts in your browser only — there is no server or database behind it.</p>
-          <form data-auth="signup" novalidate>
-            <div class="field-row">
-              <div class="field">
-                <label for="name">Full name</label>
-                <input id="name" name="name" type="text" autocomplete="name" required>
-                <span class="error" aria-live="polite"></span>
-              </div>
-              <div class="field">
-                <label for="company">Company</label>
-                <input id="company" name="company" type="text" autocomplete="organization" required>
-                <span class="error" aria-live="polite"></span>
-              </div>
-            </div>
-            <div class="field-row">
-              <div class="field">
-                <label for="signup-email">Email address</label>
-                <input id="signup-email" name="email" type="email" autocomplete="email" required>
-                <span class="error" aria-live="polite"></span>
-              </div>
-              <div class="field">
-                <label for="phone">Phone</label>
-                <input id="phone" name="phone" type="tel" autocomplete="tel" required>
-                <span class="hint">Include the country or STD code.</span>
-                <span class="error" aria-live="polite"></span>
-              </div>
-            </div>
-            <div class="field field-pw">
-              <label for="signup-password">Password</label>
-              <input id="signup-password" name="password" type="password" autocomplete="new-password" data-minlength="8" required>
-              <button class="pw-toggle" type="button" data-toggle="signup-password">Show</button>
-              <span class="hint">At least 8 characters.</span>
-              <span class="error" aria-live="polite"></span>
-            </div>
-            <div class="field field-pw">
-              <label for="confirm">Confirm password</label>
-              <input id="confirm" name="confirm" type="password" autocomplete="new-password" data-matches="signup-password" required>
-              <button class="pw-toggle" type="button" data-toggle="confirm">Show</button>
-              <span class="error" aria-live="polite"></span>
-            </div>
-            <label class="check">
-              <input type="checkbox" name="terms" required>
-              <span>I agree that Business Automation Centre may contact me about my enquiries and jobs.</span>
-            </label>
-            <div class="auth-actions">
-              <button class="btn btn-primary" type="submit">Create account</button>
-              <button class="btn btn-outline" type="button" data-open-tab="tab-signin">I already have an account</button>
-            </div>
-            <p class="form-status" role="status" aria-live="polite"></p>
-          </form>
-          </div>
         </div>
 
         <aside class="auth-aside">
@@ -214,8 +159,8 @@
           </div>
           <div class="panel auth-switch" id="aside-register">
             <h3>New client?</h3>
-            <p>Register your organisation on the “New client” tab to place and follow jobs with us.</p>
-            <button class="btn btn-primary" type="button" data-open-tab="tab-register">Start registration</button>
+            <p>Our office opens client logins. Ask us and we will send your user ID and a temporary password, which you change the first time you sign in.</p>
+            <a class="btn btn-primary" href="contact.html">Request a login</a>
           </div>
         </aside>
       </div>

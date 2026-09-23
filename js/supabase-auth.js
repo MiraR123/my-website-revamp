@@ -54,24 +54,63 @@
     },
 
     /* Unbilled challans only: a challan leaves this list the moment the
-       office links it to an invoice. */
-    getChallans: function (userId) {
-      return sb.from("delivery_challans")
-        .select("dc_number, dc_date, dc_file")
-        .eq("client_id", userId)
+       office links it to an invoice. An admin skips the client filter and
+       the policies return every client's rows, each carrying its own code. */
+    getChallans: function (userId, isAdmin) {
+      var q = sb.from("delivery_challans")
+        .select("dc_number, dc_date, dc_file, client_id, clients(client_code)")
         .is("invoice_id", null)
-        .order("dc_date", { ascending: false })
+        .order("dc_date", { ascending: false });
+      if (!isAdmin) q = q.eq("client_id", userId);
+      return q
         .then(function (r) { return r.error ? null : r.data; })
         .catch(function () { return null; });
     },
 
-    getInvoices: function (userId) {
-      return sb.from("invoices")
-        .select("invoice_number, invoice_date, invoice_file")
-        .eq("client_id", userId)
-        .order("invoice_date", { ascending: false })
+    getInvoices: function (userId, isAdmin) {
+      var q = sb.from("invoices")
+        .select("invoice_number, invoice_date, invoice_file, client_id, clients(client_code)")
+        .order("invoice_date", { ascending: false });
+      if (!isAdmin) q = q.eq("client_id", userId);
+      return q
         .then(function (r) { return r.error ? null : r.data; })
         .catch(function () { return null; });
+    },
+
+    /* Admin only in practice: the select policy returns nothing but the
+       caller's own row unless public.is_admin(). */
+    getAllClients: function () {
+      return sb.from("clients")
+        .select("client_code, full_name, company, email, role, must_change_password")
+        .order("client_code")
+        .then(function (r) { return r.error ? null : r.data; })
+        .catch(function () { return null; });
+    },
+
+    /* Creating a login needs the service-role key, so it happens inside the
+       admin-create-client Edge Function; the browser only forwards the
+       admin's own session and receives the temporary password to pass on. */
+    createClientLogin: function (details) {
+      return sb.functions.invoke("admin-create-client", { body: details })
+        .then(function (r) {
+          if (r.error) {
+            return r.error.context && r.error.context.json
+              ? r.error.context.json().then(function (body) {
+                  return { error: (body && body.error) || r.error.message };
+                })
+              : { error: r.error.message };
+          }
+          return r.data;
+        });
+    },
+
+    /* First sign-in: set the real password, then let the database clear the
+       flag — it is not writable from a normal update. */
+    changePassword: function (password) {
+      return sb.auth.updateUser({ password: password }).then(function (r) {
+        if (r.error) return { error: friendly(r.error) };
+        return sb.rpc("password_changed").then(function () { return {}; });
+      });
     },
 
     /* The office uploads the real document to a private bucket, one folder

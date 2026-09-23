@@ -101,6 +101,7 @@
      is read once from public.clients and printed against every line. */
   var customerCode = "—";
   var clientId = "";
+  var isAdmin = false;
 
   /* A one-page PDF written by hand: five objects, then an xref table holding
      the byte offset of each, which is why the objects are concatenated in
@@ -155,6 +156,12 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
 
+  /* A client's own code comes from their profile; an admin sees rows from
+     every client, each carrying its own code through the join. */
+  function code(row) {
+    return (row.clients && row.clients.client_code) || customerCode;
+  }
+
   /* Both tabs are the same table: reference, date, customer code and a PDF
      of the office's own document. Storage keeps one folder per client with
      the file named after the reference, so a row needs no extra bookkeeping;
@@ -181,7 +188,7 @@
       return "<tr>" +
         "<td><strong>" + escape(row[opts.numberKey]) + "</strong></td>" +
         "<td>" + date(row[opts.dateKey]) + "</td>" +
-        "<td>" + escape(customerCode) + "</td>" +
+        "<td>" + escape(code(row)) + "</td>" +
         "<td><button type=\"button\" class=\"btn btn-sm\" data-row=\"" + index +
           "\">Download PDF</button></td></tr>";
     }).join("");
@@ -197,7 +204,7 @@
 
       var row = rows[Number(button.dataset.row)];
       var name = String(row[opts.numberKey] || opts.heading).replace(/[^\w.-]+/g, "-");
-      var path = row[opts.fileKey] || (clientId + "/" + name + ".pdf");
+      var path = row[opts.fileKey] || ((row.client_id || clientId) + "/" + name + ".pdf");
 
       button.disabled = true;
       auth.getFileUrl(opts.bucket, path, name + ".pdf").then(function (url) {
@@ -206,7 +213,7 @@
         saveAs(name + ".pdf", "application/pdf", simplePdf(opts.heading, [
           [opts.numberLabel, String(row[opts.numberKey] || "")],
           [opts.dateLabel, date(row[opts.dateKey])],
-          ["Customer code", customerCode]
+          ["Customer code", code(row)]
         ]));
       });
     });
@@ -270,6 +277,96 @@
     }
   }
 
+  function status(box, text, tone) {
+    if (!box) return;
+    box.className = "form-status is-" + (tone || "info");
+    box.hidden = false;
+    box.textContent = text;
+  }
+
+  /* The office opens the account with a temporary password, so the rest of
+     the dashboard stays out of reach until the client has replaced it. The
+     flag itself lives in public.clients and is cleared by the database. */
+  function firstLoginGate() {
+    var panel = document.getElementById("first-login");
+    var form = document.getElementById("first-login-form");
+    if (!panel || !form) return;
+
+    var box = document.getElementById("first-login-status");
+    var hidden = Array.prototype.slice.call(document.querySelectorAll(".dash-tabs, .dash-panel"));
+    hidden.forEach(function (node) { node.hidden = true; });
+    panel.hidden = false;
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var password = document.getElementById("new-password").value;
+      if (password.length < 8) return status(box, "Use at least 8 characters.", "error");
+      if (password !== document.getElementById("new-password-2").value) {
+        return status(box, "Both passwords must match.", "error");
+      }
+
+      status(box, "Saving…", "info");
+      auth.changePassword(password).then(function (r) {
+        if (r.error) return status(box, r.error, "error");
+        panel.hidden = true;
+        hidden.forEach(function (node) {
+          node.hidden = node.classList.contains("dash-panel") && node.id !== "panel-account";
+        });
+        fail("Password updated. Welcome aboard.", "success");
+      });
+    });
+  }
+
+  function renderClients(rows) {
+    var host = document.getElementById("client-list");
+    if (!host) return;
+    if (!rows || !rows.length) return note(host, "No client accounts yet.");
+
+    var body = rows.map(function (row) {
+      return "<tr><td><strong>" + escape(row.client_code) + "</strong></td><td>" +
+        escape(row.company || row.full_name || "—") + "</td><td>" + escape(row.email || "—") +
+        "</td><td>" + (row.must_change_password ? "Temporary password" : "Active") + "</td></tr>";
+    }).join("");
+
+    host.innerHTML = "<div class=\"table-wrap\"><table class=\"dash-table\">" +
+      "<thead><tr><th>Client ID</th><th>Client</th><th>Email</th><th>Login</th></tr></thead>" +
+      "<tbody>" + body + "</tbody></table></div>";
+  }
+
+  function adminPanel() {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-admin-only]"), function (node) {
+      node.hidden = false;
+    });
+
+    auth.getAllClients().then(renderClients);
+
+    var form = document.getElementById("new-client-form");
+    if (!form) return;
+    var box = document.getElementById("new-client-status");
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var button = form.querySelector("button[type=submit]");
+      button.disabled = true;
+      status(box, "Creating the login…", "info");
+
+      auth.createClientLogin({
+        email: document.getElementById("client-email").value.trim(),
+        full_name: document.getElementById("client-name").value.trim(),
+        company: document.getElementById("client-company").value.trim(),
+        phone: document.getElementById("client-phone").value.trim()
+      }).then(function (r) {
+        button.disabled = false;
+        if (!r || r.error) return status(box, (r && r.error) || "Could not create the login.", "error");
+        status(box, "Account " + (r.client_code || "") + " created for " + r.email +
+          ". Temporary password: " + r.password +
+          " — share it with the client now; it is not shown again.", "success");
+        form.reset();
+        auth.getAllClients().then(renderClients);
+      });
+    });
+  }
+
   if (!auth) {
     fail("Could not reach the accounts service. Check your connection and reload the page.");
     return;
@@ -294,10 +391,18 @@
     tabs();
     auth.getProfile(user.id).then(function (profile) {
       render(user, profile);
+      isAdmin = !!(profile && profile.role === "admin");
+
+      if (profile && profile.must_change_password) {
+        firstLoginGate();
+        return;
+      }
+      if (isAdmin) adminPanel();
+
       return Promise.all([
         auth.getJobs(user.id).then(renderJobs),
-        auth.getChallans(user.id).then(renderChallans),
-        auth.getInvoices(user.id).then(renderInvoices)
+        auth.getChallans(user.id, isAdmin).then(renderChallans),
+        auth.getInvoices(user.id, isAdmin).then(renderInvoices)
       ]);
     });
   });
