@@ -17,7 +17,9 @@ const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
+  /* supabase-js sends apikey and x-client-info alongside the token, and a
+     preflight that does not list them fails before the request is made. */
+  "Access-Control-Allow-Headers": "authorization, apikey, x-client-info, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
