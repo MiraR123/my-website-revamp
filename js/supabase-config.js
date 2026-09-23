@@ -7,6 +7,7 @@ window.BAC_SUPABASE = {
   url: "https://ixxztgikddrwifiexoqi.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4eHp0Z2lrZGRyd2lmaWV4b3FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4NTM5NTUsImV4cCI6MjEwNTQyOTk1NX0.CCn-GTobo-iiyHC2JdwQaW_3ch5mwr-e3ObxVbsNpM8",
   invoiceBucket: "invoices",
+  challanBucket: "challans",
   dashboard: "dashboard.html",
   login: "login.html"
 };

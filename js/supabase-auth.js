@@ -57,7 +57,7 @@
        office links it to an invoice. */
     getChallans: function (userId) {
       return sb.from("delivery_challans")
-        .select("dc_number, dc_date, dc_description, dc_amount")
+        .select("dc_number, dc_date, dc_file")
         .eq("client_id", userId)
         .is("invoice_id", null)
         .order("dc_date", { ascending: false })
@@ -67,20 +67,20 @@
 
     getInvoices: function (userId) {
       return sb.from("invoices")
-        .select("invoice_number, invoice_date, invoice_amount, invoice_file")
+        .select("invoice_number, invoice_date, invoice_file")
         .eq("client_id", userId)
         .order("invoice_date", { ascending: false })
         .then(function (r) { return r.error ? null : r.data; })
         .catch(function () { return null; });
     },
 
-    /* The office uploads the real invoice document to a private bucket, one
-       folder per client, so the file is reached with a short-lived signed
-       URL rather than a public link. Returns null when nothing is stored
-       yet and the dashboard falls back to the generated document. */
-    getInvoiceFileUrl: function (path, downloadName) {
-      if (!path) return Promise.resolve(null);
-      return sb.storage.from(cfg.invoiceBucket || "invoices")
+    /* The office uploads the real document to a private bucket, one folder
+       per client, so the file is reached with a short-lived signed URL
+       rather than a public link. Returns null when nothing is stored yet
+       and the dashboard falls back to the generated document. */
+    getFileUrl: function (bucket, path, downloadName) {
+      if (!bucket || !path) return Promise.resolve(null);
+      return sb.storage.from(bucket)
         .createSignedUrl(path, 60, downloadName ? { download: downloadName } : undefined)
         .then(function (r) { return r.error ? null : r.data.signedUrl; })
         .catch(function () { return null; });
