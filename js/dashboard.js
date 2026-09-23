@@ -231,8 +231,8 @@
       fileKey: "dc_file",
       bucket: cfg.challanBucket || "challans",
       statLabel: "Challans pending billing",
-      offText: "Delivery challan records are not switched on for this account yet. Call the office and we will enable them.",
-      emptyText: "Nothing pending — every challan raised for you has been carried on to an invoice."
+      offText: "No delivery challans available.",
+      emptyText: "No delivery challans available."
     }, list);
   }
 
@@ -248,8 +248,8 @@
       fileKey: "invoice_file",
       bucket: cfg.invoiceBucket || "invoices",
       statLabel: "Invoices raised",
-      offText: "Invoice records are not switched on for this account yet. Call the office and we will enable them.",
-      emptyText: "No invoices raised yet. Once your challans are billed they will be listed here."
+      offText: "No invoices available.",
+      emptyText: "No invoices available."
     }, list);
   }
 
@@ -404,6 +404,10 @@
         auth.getChallans(user.id, isAdmin).then(renderChallans),
         auth.getInvoices(user.id, isAdmin).then(renderInvoices)
       ]);
+    }).catch(function () {
+      /* Never leave the placeholders reading "Loading…" when a lookup breaks. */
+      renderChallans([]);
+      renderInvoices([]);
     });
   });
 })();
