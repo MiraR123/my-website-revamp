@@ -30,13 +30,11 @@ function reply(status: number, body: Record<string, unknown>) {
   });
 }
 
-/* Readable but unguessable: the admin reads it out to the client once and
-   the client is forced to replace it at first sign-in. */
-function tempPassword() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-  const bytes = crypto.getRandomValues(new Uint8Array(12));
-  return "BAC-" + Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
-}
+/* One standard temporary password for every new login, so the office can
+   quote it without reading out a random string. It only ever survives one
+   sign-in: must_change_password below forces the client to replace it.
+   Set a TEMP_PASSWORD function secret to change it without a redeploy. */
+const tempPassword = Deno.env.get("TEMP_PASSWORD") ?? "Bacipl@1234";
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -69,7 +67,7 @@ Deno.serve(async (request) => {
   const email = (payload.email ?? "").trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return reply(400, { error: "A valid email is required." });
 
-  const password = tempPassword();
+  const password = tempPassword;
   const created = await admin.auth.admin.createUser({
     email,
     password,

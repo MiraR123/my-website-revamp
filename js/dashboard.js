@@ -360,7 +360,7 @@
         if (!r || r.error) return status(box, (r && r.error) || "Could not create the login.", "error");
         status(box, "Account " + (r.client_code || "") + " created for " + r.email +
           ". Temporary password: " + r.password +
-          " — share it with the client now; it is not shown again.", "success");
+          " — share it with the client; they must change it at first sign-in.", "success");
         form.reset();
         auth.getAllClients().then(renderClients);
       });
