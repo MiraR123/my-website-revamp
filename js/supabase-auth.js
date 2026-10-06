@@ -235,12 +235,8 @@
     var step = document.getElementById("reset-step-2");
     var request = document.querySelector("form[data-auth=reset-request]");
     if (!panel || !step) return;
-    Array.prototype.forEach.call(document.querySelectorAll(".auth-tabs button"), function (tab) {
-      tab.classList.remove("is-active");
-      tab.setAttribute("aria-selected", "false");
-      var p = document.getElementById(tab.getAttribute("aria-controls"));
-      if (p) p.hidden = true;
-    });
+    var signin = document.getElementById("panel-signin");
+    if (signin) signin.hidden = true;
     panel.hidden = false;
     if (request) request.hidden = true;
     step.hidden = false;

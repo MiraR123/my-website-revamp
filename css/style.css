@@ -578,45 +578,6 @@ address { font-style: normal; }
   .field-row { grid-template-columns: 1fr; gap: 0; }
 }
 
-.auth-tabs {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  gap: 8px;
-  margin-bottom: var(--space-5);
-  padding: 6px;
-  background: var(--surface-alt);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-}
-.auth-tabs button {
-  display: grid;
-  border: 0;
-  font-family: inherit;
-  cursor: pointer;
-  background: transparent;
-  width: 100%;
-  justify-items: center;
-  gap: 1px;
-  padding: 9px 12px;
-  border-radius: 999px;
-  text-decoration: none;
-  color: var(--muted);
-  font-size: .78rem;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  font-weight: 600;
-}
-.auth-tabs button span {
-  font-size: .98rem;
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: 700;
-  color: var(--navy);
-}
-.auth-tabs button:hover { background: rgba(51, 102, 153, .08); }
-.auth-tabs button.is-active { background: var(--blue); color: rgba(255, 255, 255, .78); box-shadow: 0 6px 16px rgba(51, 102, 153, .25); }
-.auth-tabs button.is-active span { color: #fff; }
 .auth-panel[hidden] { display: none; }
 .mail-preview {
   margin-top: var(--space-5);

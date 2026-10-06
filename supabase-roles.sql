@@ -128,6 +128,6 @@ grant execute on function public.password_changed() to authenticated;
 -- Replace the email with the account that should administer the site.
 update public.clients
    set role = 'admin', must_change_password = false
- where id = (select id from auth.users where email = 'aarthiradhakrishnan7@gmail.com');
+ where id = (select id from auth.users where email = 'admin@example.com');
 
 select client_code, role, must_change_password from public.clients order by role, client_code;

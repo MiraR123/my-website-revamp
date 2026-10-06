@@ -1,0 +1,7 @@
+# GitHub Pages: publish only the website itself. Setup scripts, the Edge
+# Function source and tooling stay in the repository but are not served.
+exclude:
+  - README.md
+  - supabase
+  - tools
+  - "*.sql"
