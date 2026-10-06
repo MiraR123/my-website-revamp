@@ -5,8 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Client login — Business Automation Centre</title>
 <meta name="description" content="Client login for Business Automation Centre — access your plotting and prepress job details.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Business Automation Centre">
+<meta property="og:title" content="Client login — Business Automation Centre">
+<meta property="og:description" content="Client login for Business Automation Centre — access your plotting and prepress job details.">
+<meta property="og:image" content="https://mirar123.github.io/my-website-revamp/images/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="robots" content="noindex">
 <link rel="icon" href="images/conamelogo.jpg" type="image/jpeg">
-<link rel="stylesheet" href="css/style.css?v=23">
+<link rel="stylesheet" href="css/style.css?v=24">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to main content</a>
@@ -45,7 +52,6 @@
       </div>
       <ul class="page-hero-meta">
         <li>Existing clients</li>
-        <li>New client registration</li>
         <li><a href="contact.html">Need help?</a></li>
       </ul>
     </div>
@@ -55,11 +61,7 @@
     <div class="container">
       <div class="auth-layout">
         <div class="auth-card">
-          <div class="auth-tabs" role="tablist" aria-label="Client account">
-            <button class="is-active" type="button" role="tab" id="tab-signin" aria-selected="true" aria-controls="panel-signin">Existing client<span>Sign in</span></button>
-          </div>
-
-          <div class="auth-panel" id="panel-signin" role="tabpanel" aria-labelledby="tab-signin">
+          <div class="auth-panel" id="panel-signin">
           <h2>Sign in</h2>
           <p class="lead">Use the email address registered with us.</p>
           <p class="form-note" data-demo-note>Local demo: this front-end stores accounts in your browser only — there is no server or database behind it.</p>
@@ -81,7 +83,6 @@
             </label>
             <div class="auth-actions">
               <button class="btn btn-primary" type="submit">Sign in</button>
-              <a class="btn btn-outline" href="contact.html">New client? Ask us for a login</a>
             </div>
             <p class="form-status" role="status" aria-live="polite"></p>
             <p class="auth-alt"><a href="#reset" data-open-reset>Forgotten your password?</a> We will email a reset link to your registered address. You can also call <a href="tel:+914424840889">+91 - 44 - 2484 0889</a>.</p>
@@ -100,7 +101,7 @@
             </div>
             <div class="auth-actions">
               <button class="btn btn-primary" type="submit">Email me a reset code</button>
-              <button class="btn btn-outline" type="button" data-open-tab="tab-signin">Back to sign in</button>
+              <button class="btn btn-outline" type="button" data-open-signin>Back to sign in</button>
             </div>
             <p class="form-status" role="status" aria-live="polite"></p>
           </form>
@@ -136,7 +137,7 @@
               </div>
               <div class="auth-actions">
                 <button class="btn btn-primary" type="submit">Save new password</button>
-                <button class="btn btn-outline" type="button" data-open-tab="tab-signin">Back to sign in</button>
+                <button class="btn btn-outline" type="button" data-open-signin>Back to sign in</button>
               </div>
               <p class="form-status" role="status" aria-live="polite"></p>
             </form>
@@ -206,8 +207,8 @@
 
 <button class="to-top" type="button" aria-label="Back to top">&uarr;</button>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
-<script src="js/supabase-config.js?v=23"></script>
-<script src="js/supabase-auth.js?v=23"></script>
-<script src="js/script.js?v=23"></script>
+<script src="js/supabase-config.js?v=24"></script>
+<script src="js/supabase-auth.js?v=24"></script>
+<script src="js/script.js?v=24"></script>
 </body>
 </html>

@@ -12,7 +12,7 @@ declare
 begin
   select id into v_client
   from public.clients
-  where lower(email) = lower('aarthiradhakrishnan7@gmail.com');
+  where lower(email) = lower('client@example.com');
 
   if v_client is null then
     raise exception 'No client found for that email — register and confirm the account first.';
@@ -47,4 +47,4 @@ end $$;
 -- optional: a few jobs for the Account tab
 -- insert into public.jobs (client_id, reference, title, service, status)
 -- select id, 'JOB-2201', 'Tender drawing set', 'Plotting', 'completed'
--- from public.clients where lower(email) = lower('aarthiradhakrishnan7@gmail.com');
+-- from public.clients where lower(email) = lower('client@example.com');

@@ -237,64 +237,35 @@
   });
 })();
 
-/* Client account tabs: sign in / new client registration on one page. */
+/* Client login: switch between the sign-in and password-reset panels. */
 (function () {
   "use strict";
 
-  var tabs = document.querySelectorAll(".auth-tabs [role=tab]");
-  if (!tabs.length) return;
+  var signin = document.getElementById("panel-signin");
+  var reset = document.getElementById("panel-reset");
+  if (!signin || !reset) return;
 
-  function activate(id, focus) {
-    Array.prototype.forEach.call(tabs, function (tab) {
-      var selected = tab.id === id;
-      tab.classList.toggle("is-active", selected);
-      tab.setAttribute("aria-selected", selected ? "true" : "false");
-      var panel = document.getElementById(tab.getAttribute("aria-controls"));
-      if (panel) panel.hidden = !selected;
-      if (selected && focus) tab.focus();
-    });
-    var aside = document.getElementById("aside-register");
-    if (aside) aside.hidden = id === "tab-register";
-    var reset = document.getElementById("panel-reset");
-    if (reset) reset.hidden = true;
-    history.replaceState(null, "", id === "tab-register" ? "#register" : "#signin");
+  function show(panel, hash, focusId) {
+    signin.hidden = panel !== signin;
+    reset.hidden = panel !== reset;
+    history.replaceState(null, "", hash);
+    var input = document.getElementById(focusId);
+    if (input) input.focus();
   }
 
-  Array.prototype.forEach.call(tabs, function (tab) {
-    tab.addEventListener("click", function () { activate(tab.id, false); });
-  });
-
-  Array.prototype.forEach.call(document.querySelectorAll("[data-open-tab]"), function (button) {
+  Array.prototype.forEach.call(document.querySelectorAll("[data-open-signin]"), function (button) {
     button.addEventListener("click", function () {
-      activate(button.dataset.openTab, true);
+      show(signin, "#signin", "email");
       document.querySelector(".auth-card").scrollIntoView({ behavior: "smooth", block: "start" });
     });
   });
 
-  var resetPanel = document.getElementById("panel-reset");
-
-  function openReset() {
-    Array.prototype.forEach.call(tabs, function (tab) {
-      tab.classList.remove("is-active");
-      tab.setAttribute("aria-selected", "false");
-      var panel = document.getElementById(tab.getAttribute("aria-controls"));
-      if (panel) panel.hidden = true;
+  Array.prototype.forEach.call(document.querySelectorAll("[data-open-reset]"), function (link) {
+    link.addEventListener("click", function (e) {
+      e.preventDefault();
+      show(reset, "#reset", "reset-email");
     });
-    resetPanel.hidden = false;
-    history.replaceState(null, "", "#reset");
-    var input = document.getElementById("reset-email");
-    if (input) input.focus();
-  }
+  });
 
-  if (resetPanel) {
-    Array.prototype.forEach.call(document.querySelectorAll("[data-open-reset]"), function (link) {
-      link.addEventListener("click", function (e) {
-        e.preventDefault();
-        openReset();
-      });
-    });
-  }
-
-  if (location.hash === "#register") activate("tab-register", false);
-  if (location.hash === "#reset" && resetPanel) openReset();
+  if (location.hash === "#reset") show(reset, "#reset", "reset-email");
 })();

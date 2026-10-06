@@ -13,17 +13,21 @@ my-website/
 ├── infrastructure.html   # Infrastructure
 ├── info.html             # Info — company, working hours, holidays, testimonials
 ├── contact.html          # Contact us — address, phone, WhatsApp, email, website, map
-├── login.html            # Client login: sign in + new client registration tabs
-├── dashboard.html        # Client dashboard (requires a Supabase session)
+├── login.html            # Client login: sign in + forgotten-password reset
+├── dashboard.html        # Client / admin dashboard (requires a Supabase session)
+├── 404.html              # Not-found page (GitHub Pages serves it automatically)
+├── robots.txt, sitemap.xml
+├── _config.yml           # GitHub Pages: keeps setup files out of the published site
 ├── supabase-setup.sql    # schema, RLS policies and client-ID trigger — run once
-├── supabase-billing.sql  # delivery challan + invoice tables — run once, after the above
+├── supabase-*.sql        # remaining setup scripts — see “One-time setup”
+├── supabase/functions/admin-create-client/  # Edge Function: admin creates client logins
 ├── css/
 │   └── style.css         # complete design system (was assets/css/modern.css)
 ├── js/
 │   ├── script.js         # mobile nav, sticky header, back-to-top, form validation
 │   ├── supabase-config.js# project URL + anon key
-│   ├── supabase-auth.js  # sign up / sign in / password reset against Supabase
-│   └── dashboard.js      # renders the signed-in client's details and jobs
+│   ├── supabase-auth.js  # sign in, password reset, first-login password change
+│   └── dashboard.js      # account, delivery challans, invoices, admin Clients tab
 └── images/               # only the images actually used by the pages
     ├── banner2.gif       # original animated logo (3D medallion in the hero)
     ├── banner1.gif       # original "Ultimate Plotting Solutions" banner
@@ -56,63 +60,75 @@ backend.
 
 ## Client accounts (Supabase)
 
-Accounts are real: `login.html` and `dashboard.html` talk to Supabase Auth and
-PostgREST directly from the browser, so the site stays a pure static build with
-no server of its own.
+Accounts are real: `login.html` and `dashboard.html` talk to Supabase Auth,
+PostgREST, Storage and one Edge Function directly from the browser, so the site
+stays a pure static build that can be served from any HTTPS host.
 
-- Registration → `auth.signUp` with the name/company/phone as user metadata; a
-  trigger on `auth.users` copies them into `public.clients` and assigns the
-  client ID (`BAC-1001`, `BAC-1002`, …) from a sequence.
-- Sign in → `auth.signInWithPassword`, then a redirect to `dashboard.html`.
-- Forgotten password → `auth.resetPasswordForEmail` sends a **real email** with
-  a recovery link back to `login.html#reset`, where `auth.updateUser` stores the
-  new password. The existing password is never emailed.
-- `dashboard.html` requires a session (otherwise it redirects to the login page)
-  and has three tabs, deep-linkable as `#account`, `#dc` and `#invoices`:
-  - **Account** — client ID, contact details, verification state, recent jobs.
-  - **Delivery challans** — every DC raised for the client with its date,
-    description, quantity, value and billed/unbilled status, filterable, with
-    totals for billed vs unbilled at the top.
-  - **Invoices** — one row per invoice with value, tax, total and payment
-    status; *View DCs* expands the row to list the challan numbers that
-    invoice covers.
+- **No public sign-up.** Only an admin creates client logins, from the
+  dashboard's *Clients* tab. That calls the `admin-create-client` Edge Function,
+  which checks the caller is an admin, creates the Auth user with the
+  service-role key (held by Supabase, never in this folder), creates the
+  `clients` row with `must_change_password = true` and returns the temporary
+  password (`Bacipl@1234` by default, or the `TEMP_PASSWORD` function secret).
+- **First sign-in** shows only a "set a new password" form; the dashboard opens
+  once the password has been changed.
+- **Forgotten password** → `auth.resetPasswordForEmail` sends a real email with
+  a link back to `login.html#reset`, where the new password is saved.
+- **Roles:** `clients.role` is `client` or `admin`. RLS lets a client read only
+  their own rows; `public.is_admin()` lets admins read every client, challan,
+  invoice and stored PDF.
+- `dashboard.html` tabs, deep-linkable as `#account`, `#dc`, `#invoices`
+  (and `#clients` for admins):
+  - **Account** — client ID and contact details.
+  - **Delivery challans** — unbilled DCs only: DC no., date, customer code and
+    a *Download PDF* button.
+  - **Invoices** — invoice no., date, customer code and *Download PDF*.
 
-A challan counts as billed when its `invoice_id` is set, so the status is
-derived from the link to the invoice and cannot drift out of step with it.
+A challan is unbilled while its `invoice_id` is empty; the column is only used
+as that filter and is never shown on screen.
 
 ### One-time setup
 
-1. Run `supabase-setup.sql` in the Supabase SQL editor (tables, RLS policies,
-   trigger, and a back-fill for users who registered earlier), then
-   `supabase-billing.sql` for the `delivery_challans` and `invoices` tables.
-   The dashboard degrades gracefully if the billing tables are missing — the
-   two tabs just say the records are not switched on yet.
-2. Authentication → Sign In / Providers → Email: with "Confirm email" on, a new
-   client must click the confirmation link before their first sign-in. Turn it
-   off for immediate access.
-3. Authentication → URL configuration: add the site URL(s) you serve from
-   (e.g. `http://localhost:3000`, the GitHub Pages URL) as redirect URLs so the
-   confirmation and password-reset links come back to the right place.
+1. Supabase → SQL Editor, in this order: `supabase-setup.sql`,
+   `supabase-billing.sql`, `supabase-billing-v2.sql`,
+   `supabase-invoice-files.sql`, `supabase-challan-files.sql`,
+   `supabase-roles.sql`. Edit the admin email at the end of
+   `supabase-roles.sql` before running it. The `supabase-sample-data*.sql`
+   files are optional test data.
+2. Supabase → Edge Functions → deploy `admin-create-client` with the contents
+   of `supabase/functions/admin-create-client/index.ts` (dashboard editor or
+   `supabase functions deploy admin-create-client`).
+3. Supabase → Authentication → URL Configuration: Site URL = the address the
+   site is served from; add `https://<that-domain>/**` and
+   `http://localhost:3000/**` to Redirect URLs.
+4. Supabase → Authentication → Sign In / Providers: turn off "Allow new users
+   to sign up".
+5. Recommended before real clients: connect your own SMTP provider (the
+   built-in mailer sends only a few emails per hour) and replace the shared
+   temporary password with a random one per client.
 
-### Entering challans and invoices
+### Uploading challans and invoices
 
-The client-side policies are read-only, so rows are added from the Supabase
-Table Editor (or an import) by your office, not from the website:
+Rows are added by the office in the Supabase Table Editor (or an import); the
+website is read-only for clients. PDFs go in the private Storage buckets
+`challans` and `invoices` as `<client uuid>/<DC or invoice number>.pdf` — the
+helper queries at the end of the two `*-files.sql` scripts print the exact path
+for every row. The dashboard downloads them through 60-second signed URLs and
+falls back to a generated PDF when no file has been uploaded.
 
-1. Create the invoice row first if the work is being billed (`invoice_number`
-   and `total` are generated for you; set `client_id` to the client's `id`
-   from `clients`).
-2. Add each challan to `delivery_challans` with its `client_id`, `dc_number`,
-   `dc_date` and `amount`. Leave `invoice_id` empty for an unbilled DC; set it
-   to the invoice's `id` to mark it billed and make it appear under that
-   invoice's *View DCs* list.
+### Hosting elsewhere
+
+Upload the website files (everything except `supabase/`, `tools/`, the `.sql`
+files and this README) to any static HTTPS host, then add the new domain to
+step 3 above. If the domain changes, also update the absolute URLs in
+`robots.txt`, `sitemap.xml` and the `og:image` tag on each page.
 
 ### On the anon key in `js/supabase-config.js`
 
 The anon key is a publishable key designed to ship in the browser; it is not a
 secret. All protection comes from the Row Level Security policies in
 `supabase-setup.sql` (`auth.uid() = id`), which is why every client can only
-read their own row. Never put the service-role key in this folder.
+read their own rows (admins excepted via `public.is_admin()`). Never put the service-role key in this folder.
 
 ## Colour
 
