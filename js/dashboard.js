@@ -198,7 +198,7 @@
       "</th><th>Customer code</th><th>Download</th></tr></thead>" +
       "<tbody>" + body + "</tbody></table></div>";
 
-    host.addEventListener("click", function (event) {
+    host.onclick = function (event) {
       var button = event.target.closest("[data-row]");
       if (!button) return;
 
@@ -216,7 +216,7 @@
           ["Customer code", code(row)]
         ]));
       });
-    });
+    };
   }
 
   function renderChallans(list) {
@@ -333,12 +333,216 @@
       "<tbody>" + body + "</tbody></table></div>";
   }
 
+  /* Admin Documents tab: upload a DC or invoice PDF for a chosen client,
+     tick the challans an invoice covers, and replace or delete entries. */
+  var MAX_PDF = 10 * 1024 * 1024;
+  var docState = { clientId: "", docs: null, replace: null };
+
+  function fillClientSelect(rows) {
+    var select = document.getElementById("doc-client");
+    if (!select) return;
+    var current = select.value;
+    select.innerHTML = "<option value=\"\">Choose a client…</option>" + (rows || []).map(function (row) {
+      return "<option value=\"" + escape(row.id) + "\">" + escape(row.client_code) + " — " +
+        escape(row.company || row.full_name || row.email || "") + "</option>";
+    }).join("");
+    select.value = current;
+  }
+
+  function pdfProblem(file) {
+    if (!file) return "Choose the PDF file.";
+    if (!/\.pdf$/i.test(file.name) && file.type !== "application/pdf") return "Only PDF files can be uploaded.";
+    if (file.size > MAX_PDF) return "The PDF is larger than 10 MB.";
+    return "";
+  }
+
+  function refreshClientTabs() {
+    auth.getChallans(clientId, isAdmin).then(renderChallans);
+    auth.getInvoices(clientId, isAdmin).then(renderInvoices);
+  }
+
+  function renderBillList() {
+    var host = document.getElementById("doc-bill-list");
+    if (!host) return;
+    if (!docState.clientId) return note(host, "Choose a client to see their unbilled challans.");
+    if (!docState.docs) return note(host, "Loading…");
+    var open = docState.docs.dc.filter(function (row) { return !row.invoice_id; });
+    if (!open.length) return note(host, "This client has no unbilled challans.");
+    host.innerHTML = open.map(function (row) {
+      return "<label class=\"check\"><input type=\"checkbox\" name=\"doc-dc\" value=\"" + escape(row.id) + "\"> <span><strong>" +
+        escape(row.dc_number) + "</strong> · " + date(row.dc_date) + "</span></label>";
+    }).join("");
+  }
+
+  function renderDocList() {
+    var host = document.getElementById("doc-list");
+    if (!host) return;
+    if (!docState.clientId) return note(host, "Choose a client above to see and manage their documents.");
+    if (!docState.docs) return note(host, "Loading…");
+    if (docState.docs.error) return note(host, docState.docs.error);
+
+    var rows = docState.docs.dc.map(function (row) {
+      return { kind: "dc", id: row.id, label: "Delivery challan", number: row.dc_number, date: row.dc_date,
+        path: row.dc_file || auth.documentPath(row.client_id, row.dc_number),
+        detail: row.invoice_id ? "Billed on " + ((row.invoices && row.invoices.invoice_number) || "an invoice") : "Unbilled" };
+    }).concat(docState.docs.invoice.map(function (row) {
+      var count = (row.delivery_challans && row.delivery_challans[0] && row.delivery_challans[0].count) || 0;
+      return { kind: "invoice", id: row.id, label: "Invoice", number: row.invoice_number, date: row.invoice_date,
+        path: row.invoice_file || auth.documentPath(row.client_id, row.invoice_number),
+        detail: count + (count === 1 ? " challan" : " challans") };
+    }));
+    docState.rows = rows;
+
+    if (!rows.length) return note(host, "No documents for this client yet.");
+
+    host.innerHTML = "<div class=\"table-wrap\"><table class=\"dash-table\">" +
+      "<thead><tr><th>Type</th><th>Number</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>" +
+      rows.map(function (row, index) {
+        return "<tr><td>" + escape(row.label) + "</td><td><strong>" + escape(row.number) + "</strong></td><td>" +
+          date(row.date) + "</td><td>" + escape(row.detail) + "</td><td class=\"doc-actions\">" +
+          "<button type=\"button\" class=\"btn btn-sm\" data-doc-view=\"" + index + "\">View</button>" +
+          "<button type=\"button\" class=\"btn btn-sm\" data-doc-replace=\"" + index + "\">Replace PDF</button>" +
+          "<button type=\"button\" class=\"btn btn-sm btn-danger\" data-doc-delete=\"" + index + "\">Delete</button></td></tr>";
+      }).join("") + "</tbody></table></div>";
+  }
+
+  function loadClientDocs() {
+    docState.docs = null;
+    renderDocList();
+    renderBillList();
+    if (!docState.clientId) return Promise.resolve();
+    var wanted = docState.clientId;
+    return auth.getClientDocuments(wanted).then(function (docs) {
+      if (wanted !== docState.clientId) return;
+      docState.docs = docs.error ? { error: docs.error, dc: [], invoice: [] } : docs;
+      renderDocList();
+      renderBillList();
+    });
+  }
+
+  function documentsPanel(clients) {
+    var form = document.getElementById("doc-form");
+    if (!form || !auth.uploadDocument) return;
+    fillClientSelect(clients);
+
+    var box = document.getElementById("doc-status");
+    var select = document.getElementById("doc-client");
+    var kind = document.getElementById("doc-kind");
+    var bill = document.getElementById("doc-bill");
+    var dateInput = document.getElementById("doc-date");
+    var numberInput = document.getElementById("doc-number");
+    var replaceInput = document.getElementById("doc-replace");
+    var listHost = document.getElementById("doc-list");
+
+    dateInput.value = new Date().toISOString().slice(0, 10);
+
+    function syncKind() {
+      var invoice = kind.value === "invoice";
+      bill.hidden = !invoice;
+      document.querySelector("[data-doc-label=number]").textContent = invoice ? "Invoice number" : "DC number";
+      document.querySelector("[data-doc-label=date]").textContent = invoice ? "Invoice date" : "DC date";
+      numberInput.placeholder = invoice ? "e.g. INV-2026-1001" : "e.g. DC-4006";
+    }
+
+    kind.addEventListener("change", syncKind);
+    select.addEventListener("change", function () {
+      docState.clientId = select.value;
+      loadClientDocs();
+    });
+    syncKind();
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var file = document.getElementById("doc-file").files[0];
+      var number = numberInput.value.trim();
+      if (!select.value) return status(box, "Choose the client.", "error");
+      if (!number) return status(box, "Enter the document number.", "error");
+      if (!dateInput.value) return status(box, "Enter the document date.", "error");
+      var problem = pdfProblem(file);
+      if (problem) return status(box, problem, "error");
+
+      var dcIds = Array.prototype.map.call(form.querySelectorAll("input[name=doc-dc]:checked"), function (input) {
+        return input.value;
+      });
+      var button = form.querySelector("button[type=submit]");
+      button.disabled = true;
+      status(box, "Uploading…", "info");
+
+      auth.uploadDocument(kind.value, {
+        clientId: select.value,
+        number: number,
+        date: dateInput.value,
+        file: file,
+        dcIds: kind.value === "invoice" ? dcIds : []
+      }).then(function (r) {
+        button.disabled = false;
+        if (r.error && !r.id) return status(box, r.error, "error");
+        status(box, r.error || (number + " uploaded" +
+          (dcIds.length && kind.value === "invoice" ? " and " + dcIds.length + " challan(s) marked billed." : ".")),
+          r.error ? "error" : "success");
+        numberInput.value = "";
+        document.getElementById("doc-file").value = "";
+        loadClientDocs();
+        refreshClientTabs();
+      }).catch(function () {
+        button.disabled = false;
+        status(box, "Upload failed. Check your connection and try again.", "error");
+      });
+    });
+
+    listHost.addEventListener("click", function (event) {
+      var target = event.target.closest("button");
+      if (!target || !docState.rows) return;
+
+      if (target.dataset.docView) {
+        var view = docState.rows[Number(target.dataset.docView)];
+        target.disabled = true;
+        auth.getFileUrl(auth.documentKinds[view.kind].bucket, view.path).then(function (url) {
+          target.disabled = false;
+          if (url) window.open(url, "_blank", "noopener");
+          else status(box, "No PDF is stored for " + view.number + " yet. Use Replace PDF to add one.", "info");
+        });
+      } else if (target.dataset.docReplace) {
+        docState.replace = docState.rows[Number(target.dataset.docReplace)];
+        replaceInput.value = "";
+        replaceInput.click();
+      } else if (target.dataset.docDelete) {
+        var row = docState.rows[Number(target.dataset.docDelete)];
+        var warning = "Delete " + row.number + " and its PDF? This cannot be undone." +
+          (row.kind === "invoice" ? " Its challans go back to the unbilled list." : "");
+        if (!window.confirm(warning)) return;
+        target.disabled = true;
+        auth.deleteDocument(row.kind, row.id, row.path).then(function (r) {
+          if (r.error) { target.disabled = false; return status(box, r.error, "error"); }
+          status(box, row.number + " deleted.", "success");
+          loadClientDocs();
+          refreshClientTabs();
+        });
+      }
+    });
+
+    replaceInput.addEventListener("change", function () {
+      var row = docState.replace;
+      var file = replaceInput.files[0];
+      if (!row || !file) return;
+      var problem = pdfProblem(file);
+      if (problem) return status(box, problem, "error");
+      status(box, "Replacing the PDF for " + row.number + "…", "info");
+      auth.replaceDocumentFile(row.kind, row.path, file).then(function (r) {
+        status(box, r.error || "PDF for " + row.number + " replaced.", r.error ? "error" : "success");
+      });
+    });
+  }
+
   function adminPanel() {
     Array.prototype.forEach.call(document.querySelectorAll("[data-admin-only]"), function (node) {
       node.hidden = false;
     });
 
-    auth.getAllClients().then(renderClients);
+    auth.getAllClients().then(function (rows) {
+      renderClients(rows);
+      documentsPanel(rows);
+    });
 
     var form = document.getElementById("new-client-form");
     if (!form) return;
@@ -362,7 +566,10 @@
           ". Temporary password: " + r.password +
           " — share it with the client; they must change it at first sign-in.", "success");
         form.reset();
-        auth.getAllClients().then(renderClients);
+        auth.getAllClients().then(function (rows) {
+          renderClients(rows);
+          fillClientSelect(rows);
+        });
       });
     });
   }

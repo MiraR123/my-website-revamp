@@ -92,7 +92,7 @@ as that filter and is never shown on screen.
 1. Supabase → SQL Editor, in this order: `supabase-setup.sql`,
    `supabase-billing.sql`, `supabase-billing-v2.sql`,
    `supabase-invoice-files.sql`, `supabase-challan-files.sql`,
-   `supabase-roles.sql`. Edit the admin email at the end of
+   `supabase-roles.sql`, `supabase-admin-documents.sql`. Edit the admin email at the end of
    `supabase-roles.sql` before running it. The `supabase-sample-data*.sql`
    files are optional test data.
 2. Supabase → Edge Functions → deploy `admin-create-client` with the contents
@@ -109,12 +109,19 @@ as that filter and is never shown on screen.
 
 ### Uploading challans and invoices
 
-Rows are added by the office in the Supabase Table Editor (or an import); the
-website is read-only for clients. PDFs go in the private Storage buckets
-`challans` and `invoices` as `<client uuid>/<DC or invoice number>.pdf` — the
-helper queries at the end of the two `*-files.sql` scripts print the exact path
-for every row. The dashboard downloads them through 60-second signed URLs and
-falls back to a generated PDF when no file has been uploaded.
+An admin signs in and opens the **Documents** tab: pick the client, choose
+delivery challan or invoice, enter the number and date and attach the PDF.
+The site stores the file in the private `challans` or `invoices` bucket as
+`<client uuid>/<number>.pdf` and creates the table row in one step. For an
+invoice, tick the client's unbilled challans it covers and they are marked
+billed. The same tab lists each client's documents with View, Replace PDF and
+Delete; deleting an invoice returns its challans to the unbilled list.
+
+`supabase-admin-documents.sql` grants these writes to admins only
+(`public.is_admin()`), records `created_by`, and limits both buckets to PDFs of
+up to 10 MB. Clients stay read-only. The dashboard downloads files through
+60-second signed URLs and falls back to a generated PDF when no file has been
+uploaded.
 
 ### Hosting elsewhere
 

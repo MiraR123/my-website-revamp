@@ -13,7 +13,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="robots" content="noindex">
 <link rel="icon" href="images/conamelogo.jpg" type="image/jpeg">
-<link rel="stylesheet" href="css/style.css?v=24">
+<link rel="stylesheet" href="css/style.css?v=26">
 </head>
 <body class="page-dashboard">
 <a class="skip-link" href="#main">Skip to main content</a>
@@ -68,6 +68,7 @@
         <button type="button" role="tab" id="tab-dc" aria-controls="panel-dc" aria-selected="false">Delivery challans</button>
         <button type="button" role="tab" id="tab-invoices" aria-controls="panel-invoices" aria-selected="false">Invoices</button>
         <button type="button" role="tab" id="tab-clients" aria-controls="panel-clients" aria-selected="false" hidden data-admin-only>Clients</button>
+        <button type="button" role="tab" id="tab-documents" aria-controls="panel-documents" aria-selected="false" hidden data-admin-only>Documents</button>
       </div>
 
       <div class="panel stack-lg" id="first-login" hidden>
@@ -183,6 +184,57 @@
           <div id="client-list"><p class="tight">Loading…</p></div>
         </div>
       </div>
+
+      <div class="dash-panel" id="panel-documents" role="tabpanel" aria-labelledby="tab-documents" hidden>
+        <div class="panel stack-lg">
+          <h2>Upload a document</h2>
+          <p class="tight">The PDF is stored privately in Supabase under the client's folder and listed on their dashboard straight away.</p>
+          <form class="form" id="doc-form" novalidate>
+            <div class="field-row">
+              <div class="field">
+                <label for="doc-client">Client</label>
+                <select id="doc-client" required>
+                  <option value="">Choose a client…</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="doc-kind">Document type</label>
+                <select id="doc-kind" required>
+                  <option value="dc">Delivery challan</option>
+                  <option value="invoice">Invoice</option>
+                </select>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="doc-number" data-doc-label="number">DC number</label>
+                <input type="text" id="doc-number" autocomplete="off" placeholder="e.g. DC-4006" required>
+              </div>
+              <div class="field">
+                <label for="doc-date" data-doc-label="date">DC date</label>
+                <input type="date" id="doc-date" required>
+              </div>
+            </div>
+            <div class="field">
+              <label for="doc-file">PDF file</label>
+              <input type="file" id="doc-file" accept="application/pdf,.pdf" required>
+              <span class="hint">PDF only, up to 10 MB.</span>
+            </div>
+            <fieldset class="doc-bill" id="doc-bill" hidden>
+              <legend>Challans billed on this invoice</legend>
+              <div id="doc-bill-list"><p class="tight">Choose a client to see their unbilled challans.</p></div>
+            </fieldset>
+            <p class="form-status" id="doc-status" hidden role="status"></p>
+            <button class="btn btn-primary" type="submit">Upload</button>
+          </form>
+        </div>
+
+        <div class="panel stack-lg">
+          <h2>Client documents</h2>
+          <div id="doc-list"><p class="tight">Choose a client above to see and manage their documents.</p></div>
+          <input type="file" id="doc-replace" accept="application/pdf,.pdf" hidden>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -225,9 +277,9 @@
 
 <button class="to-top" type="button" aria-label="Back to top">&uarr;</button>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
-<script src="js/supabase-config.js?v=24"></script>
-<script src="js/supabase-auth.js?v=24"></script>
-<script src="js/script.js?v=24"></script>
-<script src="js/dashboard.js?v=24"></script>
+<script src="js/supabase-config.js?v=26"></script>
+<script src="js/supabase-auth.js?v=26"></script>
+<script src="js/script.js?v=26"></script>
+<script src="js/dashboard.js?v=26"></script>
 </body>
 </html>
