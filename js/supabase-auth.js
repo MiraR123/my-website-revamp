@@ -28,6 +28,11 @@
     return message;
   }
 
+  var DOCS = {
+    dc: { table: "delivery_challans", bucket: cfg.challanBucket || "challans", number: "dc_number", date: "dc_date", file: "dc_file" },
+    invoice: { table: "invoices", bucket: cfg.invoiceBucket || "invoices", number: "invoice_number", date: "invoice_date", file: "invoice_file" }
+  };
+
   var api = {
     client: sb,
 
@@ -81,7 +86,7 @@
        caller's own row unless public.is_admin(). */
     getAllClients: function () {
       return sb.from("clients")
-        .select("client_code, full_name, company, email, role, must_change_password")
+        .select("id, client_code, full_name, company, email, role, must_change_password")
         .order("client_code")
         .then(function (r) { return r.error ? null : r.data; })
         .catch(function () { return null; });
@@ -123,6 +128,83 @@
         .createSignedUrl(path, 60, downloadName ? { download: downloadName } : undefined)
         .then(function (r) { return r.error ? null : r.data.signedUrl; })
         .catch(function () { return null; });
+    },
+
+    /* Admin document management. Supabase checks public.is_admin() on every
+       write, so these only succeed for an admin session. */
+    documentKinds: DOCS,
+
+    documentPath: function (clientId, number) {
+      return clientId + "/" + String(number).replace(/[^\w.-]+/g, "-") + ".pdf";
+    },
+
+    getClientDocuments: function (clientId) {
+      return Promise.all([
+        sb.from("delivery_challans")
+          .select("id, dc_number, dc_date, dc_file, invoice_id, client_id, invoices(invoice_number)")
+          .eq("client_id", clientId)
+          .order("dc_date", { ascending: false }),
+        sb.from("invoices")
+          .select("id, invoice_number, invoice_date, invoice_file, client_id, delivery_challans(count)")
+          .eq("client_id", clientId)
+          .order("invoice_date", { ascending: false })
+      ]).then(function (r) {
+        if (r[0].error || r[1].error) return { error: friendly(r[0].error || r[1].error) };
+        return { dc: r[0].data, invoice: r[1].data };
+      });
+    },
+
+    /* File first, then the row; if the row is refused the file is removed
+       again so Storage never holds a document the dashboard cannot list. */
+    uploadDocument: function (kind, details) {
+      var doc = DOCS[kind];
+      var path = api.documentPath(details.clientId, details.number);
+      var row = { client_id: details.clientId };
+      row[doc.number] = details.number;
+      row[doc.date] = details.date;
+      row[doc.file] = path;
+
+      return sb.storage.from(doc.bucket)
+        .upload(path, details.file, { contentType: "application/pdf", upsert: false })
+        .then(function (up) {
+          if (up.error) {
+            return { error: /exists|duplicate/i.test(up.error.message)
+              ? "A file for " + details.number + " is already stored for this client."
+              : "Storage refused the PDF: " + friendly(up.error) };
+          }
+          return sb.from(doc.table).insert(row).select("id").single().then(function (ins) {
+            if (ins.error) {
+              return sb.storage.from(doc.bucket).remove([path]).then(function () {
+                return { error: /duplicate|unique/i.test(ins.error.message)
+                  ? details.number + " already exists." : "The database refused the " + doc.table + " row: " + friendly(ins.error) };
+              });
+            }
+            if (kind !== "invoice" || !details.dcIds || !details.dcIds.length) return { id: ins.data.id };
+            return sb.from("delivery_challans").update({ invoice_id: ins.data.id })
+              .in("id", details.dcIds)
+              .then(function (bill) {
+                return bill.error
+                  ? { id: ins.data.id, error: "Invoice saved, but the challans could not be marked billed: " + friendly(bill.error) }
+                  : { id: ins.data.id };
+              });
+          });
+        });
+    },
+
+    replaceDocumentFile: function (kind, path, file) {
+      return sb.storage.from(DOCS[kind].bucket)
+        .upload(path, file, { contentType: "application/pdf", upsert: true })
+        .then(function (r) { return r.error ? { error: friendly(r.error) } : {}; });
+    },
+
+    /* Deleting an invoice returns its challans to the unbilled list through
+       the invoice_id foreign key (on delete set null). */
+    deleteDocument: function (kind, id, path) {
+      var doc = DOCS[kind];
+      return sb.from(doc.table).delete().eq("id", id).then(function (r) {
+        if (r.error) return { error: friendly(r.error) };
+        return sb.storage.from(doc.bucket).remove([path]).then(function () { return {}; });
+      });
     }
   };
 

@@ -734,3 +734,17 @@ address { font-style: normal; }
 .auth-aside .auth-switch[hidden] { display: none; }
 .auth-switch h3 { margin-bottom: .35em; }
 .auth-switch p { margin-bottom: var(--space-4); }
+
+.doc-bill {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.doc-bill[hidden] { display: none; }
+.doc-bill legend { padding: 0 6px; font-weight: 600; color: var(--navy); font-size: .93rem; }
+.doc-bill .check { margin-bottom: 8px; }
+.field input[type=file] { padding: 9px 12px; background: var(--surface-alt); }
+.doc-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.dash-table .btn-danger { color: #b3261e; }
+.dash-table .btn-danger:hover { background: #fdecea; }
