@@ -748,3 +748,15 @@ address { font-style: normal; }
 .doc-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .dash-table .btn-danger { color: #b3261e; }
 .dash-table .btn-danger:hover { background: #fdecea; }
+
+.dash-filter { max-width: 440px; margin: 0 0 var(--space-5); }
+.dash-filter[hidden] { display: none; }
+[data-admin-only][hidden], [data-client-only][hidden] { display: none !important; }
+.dash-id .doc-actions { gap: var(--space-3); margin-top: var(--space-4); }
+#client-detail[hidden], #client-create[hidden], #client-list-panel[hidden] { display: none; }
+#client-detail > .panel:first-child { margin-top: 0; }
+.client-detail-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.client-detail-head h2 { margin: 0; }
+.dash-table tr.is-link { cursor: pointer; }
+.dash-table tr.is-link:hover td { background: var(--surface-alt); }
+#panel-clients { scroll-margin-top: 96px; }

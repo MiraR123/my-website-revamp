@@ -48,6 +48,34 @@
   }
 })();
 
+/* Signed-in visitors keep their session on every page: supabase-js stores it
+   in localStorage, so "Client login" links become "My dashboard" without
+   loading Supabase on the public pages. */
+(function () {
+  "use strict";
+
+  function signedIn() {
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
+        if (!/^sb-.+-auth-token$/.test(key)) continue;
+        var session = JSON.parse(localStorage.getItem(key) || "null");
+        if (session && session.refresh_token) return true;
+      }
+    } catch (e) {
+      return false;
+    }
+    return false;
+  }
+
+  if (!signedIn()) return;
+  Array.prototype.forEach.call(document.querySelectorAll("a[href='login.html']"), function (link) {
+    link.href = "dashboard.html";
+    link.textContent = "My dashboard";
+    link.removeAttribute("aria-current");
+  });
+})();
+
 /* Client account forms: front-end only validation for the local demo pages. */
 (function () {
   "use strict";

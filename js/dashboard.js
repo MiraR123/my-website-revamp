@@ -84,6 +84,7 @@
         var panel = document.getElementById(button.getAttribute("aria-controls"));
         if (panel) panel.hidden = !on;
       });
+      syncFilter(id);
     }
 
     buttons.forEach(function (button) {
@@ -102,6 +103,28 @@
   var customerCode = "—";
   var clientId = "";
   var isAdmin = false;
+
+  /* Admin filter: "" shows every client, otherwise one client's records. */
+  var allClients = [];
+  var filterId = "";
+  var FILTER_TABS = ["tab-dc", "tab-invoices", "tab-clients"];
+
+  function filterClient() {
+    for (var i = 0; i < allClients.length; i++) if (allClients[i].id === filterId) return allClients[i];
+    return null;
+  }
+
+  function filterName() {
+    var row = filterClient();
+    return row ? row.client_code : "";
+  }
+
+  function syncFilter(tabId) {
+    var wrap = document.getElementById("client-filter-wrap");
+    if (!wrap) return;
+    var active = tabId || ((document.querySelector(".dash-tabs [aria-selected=true]") || {}).id);
+    wrap.hidden = !isAdmin || FILTER_TABS.indexOf(active) < 0;
+  }
 
   /* A one-page PDF written by hand: five objects, then an xref table holding
      the byte offset of each, which is why the objects are concatenated in
@@ -219,10 +242,10 @@
     };
   }
 
-  function renderChallans(list) {
+  function renderChallans(list, target) {
     renderDocuments({
-      host: "dc-list",
-      stats: "dc-stats",
+      host: (target && target.host) || "dc-list",
+      stats: (target && target.stats) || "dc-stats",
       heading: "Delivery challan",
       numberKey: "dc_number",
       numberLabel: "DC no.",
@@ -231,15 +254,17 @@
       fileKey: "dc_file",
       bucket: cfg.challanBucket || "challans",
       statLabel: "Challans pending billing",
-      offText: "No delivery challans available.",
-      emptyText: "No delivery challans available."
+      offText: "Delivery challans could not be loaded right now. Please refresh the page in a moment.",
+      emptyText: filterName()
+        ? "No unbilled delivery challans for " + filterName() + "."
+        : isAdmin ? "No unbilled delivery challans for any client." : "No delivery challans available."
     }, list);
   }
 
-  function renderInvoices(list) {
+  function renderInvoices(list, target) {
     renderDocuments({
-      host: "inv-list",
-      stats: "inv-stats",
+      host: (target && target.host) || "inv-list",
+      stats: (target && target.stats) || "inv-stats",
       heading: "Invoice",
       numberKey: "invoice_number",
       numberLabel: "Invoice no.",
@@ -248,8 +273,10 @@
       fileKey: "invoice_file",
       bucket: cfg.invoiceBucket || "invoices",
       statLabel: "Invoices raised",
-      offText: "No invoices available.",
-      emptyText: "No invoices available."
+      offText: "Invoices could not be loaded right now. Please refresh the page in a moment.",
+      emptyText: filterName()
+        ? "No invoices for " + filterName() + " yet."
+        : isAdmin ? "No invoices for any client yet." : "No invoices available."
     }, list);
   }
 
@@ -317,20 +344,88 @@
     });
   }
 
+  function loginState(row) {
+    return row.role === "admin" ? "Admin" : row.must_change_password ? "Temporary password" : "Active";
+  }
+
+  function chooseClient(id) {
+    var filter = document.getElementById("client-filter");
+    if (filter) {
+      filter.value = id;
+      filter.dispatchEvent(new Event("change"));
+    } else {
+      filterId = id;
+      renderClients(allClients);
+    }
+    var top = document.getElementById("panel-clients");
+    if (top && top.scrollIntoView) top.scrollIntoView({ block: "start" });
+  }
+
+  /* One client's profile plus their unbilled challans and invoices. */
+  var detailToken = 0;
+  function clientDetail(row) {
+    var title = document.getElementById("cd-title");
+    if (title) title.textContent = row.client_code + (row.company ? " — " + row.company : "");
+    var info = document.getElementById("cd-info");
+    if (info) {
+      info.innerHTML = [
+        ["Client ID", row.client_code],
+        ["Company", row.company || "—"],
+        ["Contact name", row.full_name || "—"],
+        ["Email", row.email || "—"],
+        ["Phone", row.phone || "—"],
+        ["Login", loginState(row)],
+        ["Client since", date(row.created_at)]
+      ].map(function (item) {
+        return "<div><dt>" + escape(item[0]) + "</dt><dd>" + escape(item[1]) + "</dd></div>";
+      }).join("");
+    }
+
+    var dcTarget = { host: "cd-dc-list", stats: "cd-dc-stats" };
+    var invTarget = { host: "cd-inv-list", stats: "cd-inv-stats" };
+    loadingList(dcTarget.host);
+    loadingList(invTarget.host);
+    var token = ++detailToken;
+    Promise.all([
+      auth.getChallans(clientId, true, row.id).catch(function () { return null; }),
+      auth.getInvoices(clientId, true, row.id).catch(function () { return null; })
+    ]).then(function (r) {
+      if (token !== detailToken) return;
+      renderChallans(r[0], dcTarget);
+      renderInvoices(r[1], invTarget);
+    });
+  }
+
   function renderClients(rows) {
     var host = document.getElementById("client-list");
     if (!host) return;
-    if (!rows || !rows.length) return note(host, "No client accounts yet.");
+    var chosen = rows ? filterClient() : null;
+    ["client-create", "client-list-panel"].forEach(function (id) {
+      var node = document.getElementById(id);
+      if (node) node.hidden = !!chosen;
+    });
+    var detail = document.getElementById("client-detail");
+    if (detail) detail.hidden = !chosen;
+    if (chosen) return clientDetail(chosen);
+
+    if (rows === null) return note(host, "Client accounts could not be loaded right now. Please refresh the page in a moment.");
+    if (!rows.length) return note(host, "No client accounts yet.");
 
     var body = rows.map(function (row) {
-      return "<tr><td><strong>" + escape(row.client_code) + "</strong></td><td>" +
-        escape(row.company || row.full_name || "—") + "</td><td>" + escape(row.email || "—") +
-        "</td><td>" + (row.must_change_password ? "Temporary password" : "Active") + "</td></tr>";
+      return "<tr class=\"is-link\" data-client-id=\"" + escape(row.id) + "\"><td><strong>" + escape(row.client_code) + "</strong></td><td>" +
+        escape(row.company || row.full_name || "—") + "</td><td>" + escape(row.full_name || "—") +
+        "</td><td>" + escape(row.email || "—") + "</td><td>" + escape(row.phone || "—") +
+        "</td><td>" + loginState(row) + "</td><td><button type=\"button\" class=\"btn btn-sm\">View</button></td></tr>";
     }).join("");
 
     host.innerHTML = "<div class=\"table-wrap\"><table class=\"dash-table\">" +
-      "<thead><tr><th>Client ID</th><th>Client</th><th>Email</th><th>Login</th></tr></thead>" +
+      "<thead><tr><th>Client ID</th><th>Company</th><th>Contact</th><th>Email</th><th>Phone</th><th>Login</th><th>Details</th></tr></thead>" +
       "<tbody>" + body + "</tbody></table></div>";
+
+    host.onclick = function (event) {
+      var row = event.target.closest("[data-client-id]");
+      if (row) chooseClient(row.dataset.clientId);
+    };
   }
 
   /* Admin Documents tab: upload a DC or invoice PDF for a chosen client,
@@ -338,15 +433,54 @@
   var MAX_PDF = 10 * 1024 * 1024;
   var docState = { clientId: "", docs: null, replace: null };
 
-  function fillClientSelect(rows) {
-    var select = document.getElementById("doc-client");
-    if (!select) return;
-    var current = select.value;
-    select.innerHTML = "<option value=\"\">Choose a client…</option>" + (rows || []).map(function (row) {
+  function clientOptions(rows) {
+    return (rows || []).map(function (row) {
       return "<option value=\"" + escape(row.id) + "\">" + escape(row.client_code) + " — " +
         escape(row.company || row.full_name || row.email || "") + "</option>";
     }).join("");
-    select.value = current;
+  }
+
+  function fillClientSelect(rows) {
+    var select = document.getElementById("doc-client");
+    if (select) {
+      var current = select.value;
+      select.innerHTML = "<option value=\"\">Choose a client…</option>" + clientOptions(rows);
+      select.value = current;
+    }
+    var filter = document.getElementById("client-filter");
+    if (filter) {
+      filter.innerHTML = "<option value=\"\">All clients</option>" + clientOptions(rows);
+      filter.value = filterId;
+      if (filter.value !== filterId) filterId = filter.value = "";
+    }
+  }
+
+  function loadingList(id) {
+    note(document.getElementById(id), "Loading…");
+  }
+
+  function refreshClientTabs() {
+    loadingList("dc-list");
+    loadingList("inv-list");
+    return Promise.all([
+      auth.getChallans(clientId, isAdmin, filterId).then(renderChallans, function () { renderChallans(null); }),
+      auth.getInvoices(clientId, isAdmin, filterId).then(renderInvoices, function () { renderInvoices(null); })
+    ]);
+  }
+
+  function clientFilter() {
+    var filter = document.getElementById("client-filter");
+    if (!filter) return;
+    filter.addEventListener("change", function () {
+      filterId = filter.value;
+      renderClients(allClients);
+      refreshClientTabs();
+      var docSelect = document.getElementById("doc-client");
+      if (docSelect && filterId && docSelect.value !== filterId) {
+        docSelect.value = filterId;
+        docSelect.dispatchEvent(new Event("change"));
+      }
+    });
   }
 
   function pdfProblem(file) {
@@ -356,16 +490,12 @@
     return "";
   }
 
-  function refreshClientTabs() {
-    auth.getChallans(clientId, isAdmin).then(renderChallans);
-    auth.getInvoices(clientId, isAdmin).then(renderInvoices);
-  }
-
   function renderBillList() {
     var host = document.getElementById("doc-bill-list");
     if (!host) return;
     if (!docState.clientId) return note(host, "Choose a client to see their unbilled challans.");
     if (!docState.docs) return note(host, "Loading…");
+    if (docState.docs.error) return note(host, docState.docs.error);
     var open = docState.docs.dc.filter(function (row) { return !row.invoice_id; });
     if (!open.length) return note(host, "This client has no unbilled challans.");
     host.innerHTML = open.map(function (row) {
@@ -386,14 +516,14 @@
         path: row.dc_file || auth.documentPath(row.client_id, row.dc_number),
         detail: row.invoice_id ? "Billed on " + ((row.invoices && row.invoices.invoice_number) || "an invoice") : "Unbilled" };
     }).concat(docState.docs.invoice.map(function (row) {
-      var count = (row.delivery_challans && row.delivery_challans[0] && row.delivery_challans[0].count) || 0;
+      var count = docState.docs.dc.filter(function (dc) { return dc.invoice_id === row.id; }).length;
       return { kind: "invoice", id: row.id, label: "Invoice", number: row.invoice_number, date: row.invoice_date,
         path: row.invoice_file || auth.documentPath(row.client_id, row.invoice_number),
         detail: count + (count === 1 ? " challan" : " challans") };
     }));
     docState.rows = rows;
 
-    if (!rows.length) return note(host, "No documents for this client yet.");
+    if (!rows.length) return note(host, "No delivery challans or invoices uploaded for this client yet.");
 
     host.innerHTML = "<div class=\"table-wrap\"><table class=\"dash-table\">" +
       "<thead><tr><th>Type</th><th>Number</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>" +
@@ -534,15 +664,52 @@
     });
   }
 
+  function adminOverview(rows) {
+    var host = document.getElementById("admin-stats");
+    if (!host) return;
+    if (rows === null) return note(host, "The totals could not be loaded right now. Please refresh the page in a moment.");
+    var clients = rows.filter(function (row) { return row.role !== "admin"; });
+    Promise.all([
+      auth.getChallans(clientId, true, "").catch(function () { return null; }),
+      auth.getInvoices(clientId, true, "").catch(function () { return null; })
+    ]).then(function (r) {
+      stats(host, [
+        ["Clients", String(clients.length)],
+        ["Unbilled challans", r[0] ? String(r[0].length) : "—"],
+        ["Invoices", r[1] ? String(r[1].length) : "—"]
+      ]);
+    });
+  }
+
   function adminPanel() {
     Array.prototype.forEach.call(document.querySelectorAll("[data-admin-only]"), function (node) {
       node.hidden = false;
     });
-
-    auth.getAllClients().then(function (rows) {
-      renderClients(rows);
-      documentsPanel(rows);
+    Array.prototype.forEach.call(document.querySelectorAll("[data-client-only]"), function (node) {
+      node.hidden = true;
     });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-goto-tab]"), function (button) {
+      button.addEventListener("click", function () {
+        var tab = document.getElementById(button.dataset.gotoTab);
+        if (tab) tab.click();
+      });
+    });
+    set("heading", "Admin dashboard");
+    set("code-label", "Admin");
+    set("name-label", "Name");
+    set("since-label", "Admin since");
+    document.title = "Admin dashboard — Business Automation Centre";
+
+    clientFilter();
+    syncFilter();
+    var back = document.getElementById("cd-back");
+    if (back) back.addEventListener("click", function () { chooseClient(""); });
+    auth.getAllClients().then(function (rows) {
+      allClients = rows || [];
+      renderClients(rows);
+      documentsPanel(allClients);
+      adminOverview(rows);
+    }, function () { renderClients(null); adminOverview(null); });
 
     var form = document.getElementById("new-client-form");
     if (!form) return;
@@ -567,8 +734,9 @@
           " — share it with the client; they must change it at first sign-in.", "success");
         form.reset();
         auth.getAllClients().then(function (rows) {
+          allClients = rows || allClients;
           renderClients(rows);
-          fillClientSelect(rows);
+          fillClientSelect(allClients);
         });
       });
     });
@@ -607,14 +775,21 @@
       if (isAdmin) adminPanel();
 
       return Promise.all([
-        auth.getJobs(user.id).then(renderJobs),
-        auth.getChallans(user.id, isAdmin).then(renderChallans),
-        auth.getInvoices(user.id, isAdmin).then(renderInvoices)
+        auth.getJobs(user.id).then(renderJobs, function () { renderJobs(null); }),
+        refreshClientTabs()
       ]);
     }).catch(function () {
       /* Never leave the placeholders reading "Loading…" when a lookup breaks. */
-      renderChallans([]);
-      renderInvoices([]);
+      set("greeting", "Welcome back.");
+      renderJobs(null);
+      renderChallans(null);
+      renderInvoices(null);
     });
+  }).catch(function () {
+    fail("Could not reach the accounts service. Check your connection and reload the page.");
+    set("greeting", "Your account could not be loaded.");
+    renderJobs(null);
+    renderChallans(null);
+    renderInvoices(null);
   });
 })();
