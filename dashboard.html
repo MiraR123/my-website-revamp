@@ -13,7 +13,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="robots" content="noindex">
 <link rel="icon" href="images/conamelogo.jpg" type="image/jpeg">
-<link rel="stylesheet" href="css/style.css?v=26">
+<link rel="stylesheet" href="css/style.css?v=32">
 </head>
 <body class="page-dashboard">
 <a class="skip-link" href="#main">Skip to main content</a>
@@ -51,7 +51,7 @@
         <p data-dash="greeting">Loading your account…</p>
       </div>
       <ul class="page-hero-meta">
-        <li>Client ID <strong data-dash="client-code">—</strong></li>
+        <li><span data-dash="code-label">Client ID</span> <strong data-dash="client-code">—</strong></li>
         <li data-dash="status-chip">Signed in</li>
         <li><a href="contact.html">Need help?</a></li>
         <li class="hero-signout"><button class="btn btn-signout" type="button" data-signout>Sign out</button></li>
@@ -65,10 +65,15 @@
 
       <div class="dash-tabs" role="tablist" aria-label="Dashboard sections">
         <button type="button" role="tab" id="tab-account" aria-controls="panel-account" aria-selected="true" class="is-active">Account</button>
+        <button type="button" role="tab" id="tab-clients" aria-controls="panel-clients" aria-selected="false" hidden data-admin-only>Clients</button>
         <button type="button" role="tab" id="tab-dc" aria-controls="panel-dc" aria-selected="false">Delivery challans</button>
         <button type="button" role="tab" id="tab-invoices" aria-controls="panel-invoices" aria-selected="false">Invoices</button>
-        <button type="button" role="tab" id="tab-clients" aria-controls="panel-clients" aria-selected="false" hidden data-admin-only>Clients</button>
         <button type="button" role="tab" id="tab-documents" aria-controls="panel-documents" aria-selected="false" hidden data-admin-only>Documents</button>
+      </div>
+
+      <div class="field dash-filter" id="client-filter-wrap" hidden>
+        <label for="client-filter">Show records for</label>
+        <select id="client-filter"><option value="">All clients</option></select>
       </div>
 
       <div class="panel stack-lg" id="first-login" hidden>
@@ -90,7 +95,17 @@
 
       <div class="dash-panel" id="panel-account" role="tabpanel" aria-labelledby="tab-account">
       <div class="dash-grid">
-        <div class="panel dash-id">
+        <div class="panel dash-id" hidden data-admin-only>
+          <p class="mail-head">Administrator account</p>
+          <p class="dash-code" data-dash="client-code">—</p>
+          <p class="tight">You can see every client's records, open client logins and upload delivery challans and invoices.</p>
+          <div class="doc-actions">
+            <button type="button" class="btn btn-ghost" data-goto-tab="tab-clients">Manage clients</button>
+            <button type="button" class="btn btn-ghost" data-goto-tab="tab-documents">Upload documents</button>
+          </div>
+        </div>
+
+        <div class="panel dash-id" data-client-only>
           <p class="mail-head">Your client ID</p>
           <p class="dash-code" data-dash="client-code">—</p>
           <p class="tight">Quote this reference on artwork, purchase orders and emails so we can match your job instantly.</p>
@@ -99,26 +114,41 @@
         <div class="panel">
           <h2>Account details</h2>
           <dl class="dash-list">
-            <div><dt>Contact name</dt><dd data-dash="full_name">—</dd></div>
+            <div><dt data-dash="name-label">Contact name</dt><dd data-dash="full_name">—</dd></div>
+            <div hidden data-admin-only><dt>Role</dt><dd>Administrator</dd></div>
             <div><dt>Company</dt><dd data-dash="company">—</dd></div>
             <div><dt>Email</dt><dd data-dash="email">—</dd></div>
             <div><dt>Email verified</dt><dd data-dash="verified">—</dd></div>
             <div><dt>Phone</dt><dd data-dash="phone">—</dd></div>
-            <div><dt>Client since</dt><dd data-dash="created">—</dd></div>
+            <div><dt data-dash="since-label">Client since</dt><dd data-dash="created">—</dd></div>
             <div><dt>Last sign-in</dt><dd data-dash="last-signin">—</dd></div>
             <div><dt>Account reference</dt><dd class="dash-uid" data-dash="uid">—</dd></div>
           </dl>
-          <p class="tight">Need a detail changed? <a href="contact.html">Contact the office</a> and we will update it for you.</p>
+          <p class="tight" data-client-only>Need a detail changed? <a href="contact.html">Contact the office</a> and we will update it for you.</p>
         </div>
       </div>
 
-      <div class="panel stack-lg">
+      <div class="panel stack-lg" hidden data-admin-only>
+        <h2>Overview</h2>
+        <p class="tight">Totals across all clients.</p>
+        <div class="dash-stats" id="admin-stats"><p class="tight">Counting records…</p></div>
+      </div>
+
+      <div class="panel stack-lg" data-client-only>
         <h2>Recent jobs</h2>
         <div id="dash-jobs"><p class="tight">Loading…</p></div>
       </div>
 
       <div class="dash-grid stack-lg">
-        <div class="panel">
+        <div class="panel" hidden data-admin-only>
+          <h3>Admin tasks</h3>
+          <ul class="list">
+            <li>Open logins for new clients from the Clients tab</li>
+            <li>Upload DC and invoice PDFs and mark challans billed from the Documents tab</li>
+            <li>Use "Show records for" to look at one client or all clients</li>
+          </ul>
+        </div>
+        <div class="panel" data-client-only>
           <h3>What you can do here</h3>
           <ul class="list">
             <li>Keep your contact and company details on file with us</li>
@@ -154,7 +184,30 @@
       </div>
 
       <div class="dash-panel" id="panel-clients" role="tabpanel" aria-labelledby="tab-clients" hidden>
-        <div class="panel stack-lg">
+        <div class="client-detail stack-lg" id="client-detail" hidden>
+          <div class="panel stack-lg">
+            <div class="client-detail-head">
+              <div>
+                <p class="mail-head">Client</p>
+                <h2 id="cd-title">—</h2>
+              </div>
+              <button type="button" class="btn btn-outline btn-sm" id="cd-back">Back to all clients</button>
+            </div>
+            <dl class="dash-list" id="cd-info"></dl>
+          </div>
+          <div class="panel stack-lg">
+            <h2>Unbilled delivery challans</h2>
+            <div class="dash-stats" id="cd-dc-stats"></div>
+            <div id="cd-dc-list"><p class="tight">Loading…</p></div>
+          </div>
+          <div class="panel stack-lg">
+            <h2>Invoices</h2>
+            <div class="dash-stats" id="cd-inv-stats"></div>
+            <div id="cd-inv-list"><p class="tight">Loading…</p></div>
+          </div>
+        </div>
+
+        <div class="panel stack-lg" id="client-create">
           <h2>Open a client login</h2>
           <p class="tight">We create the account and show a temporary password once. Pass it to the client — they choose their own password the first time they sign in.</p>
           <form class="form" id="new-client-form" novalidate>
@@ -179,8 +232,9 @@
           </form>
         </div>
 
-        <div class="panel stack-lg">
+        <div class="panel stack-lg" id="client-list-panel">
           <h2>Clients</h2>
+          <p class="tight">Choose a client to see their full details, delivery challans and invoices.</p>
           <div id="client-list"><p class="tight">Loading…</p></div>
         </div>
       </div>
@@ -277,9 +331,9 @@
 
 <button class="to-top" type="button" aria-label="Back to top">&uarr;</button>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
-<script src="js/supabase-config.js?v=26"></script>
-<script src="js/supabase-auth.js?v=26"></script>
-<script src="js/script.js?v=26"></script>
-<script src="js/dashboard.js?v=26"></script>
+<script src="js/supabase-config.js?v=32"></script>
+<script src="js/supabase-auth.js?v=32"></script>
+<script src="js/script.js?v=32"></script>
+<script src="js/dashboard.js?v=32"></script>
 </body>
 </html>

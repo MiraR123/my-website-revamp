@@ -60,23 +60,26 @@
 
     /* Unbilled challans only: a challan leaves this list the moment the
        office links it to an invoice. An admin skips the client filter and
-       the policies return every client's rows, each carrying its own code. */
-    getChallans: function (userId, isAdmin) {
+       the policies return every client's rows, each carrying its own code,
+       unless the admin has picked one client to look at. */
+    getChallans: function (userId, isAdmin, onlyClientId) {
       var q = sb.from("delivery_challans")
         .select("dc_number, dc_date, dc_file, client_id, clients(client_code)")
         .is("invoice_id", null)
         .order("dc_date", { ascending: false });
       if (!isAdmin) q = q.eq("client_id", userId);
+      else if (onlyClientId) q = q.eq("client_id", onlyClientId);
       return q
         .then(function (r) { return r.error ? null : r.data; })
         .catch(function () { return null; });
     },
 
-    getInvoices: function (userId, isAdmin) {
+    getInvoices: function (userId, isAdmin, onlyClientId) {
       var q = sb.from("invoices")
         .select("invoice_number, invoice_date, invoice_file, client_id, clients(client_code)")
         .order("invoice_date", { ascending: false });
       if (!isAdmin) q = q.eq("client_id", userId);
+      else if (onlyClientId) q = q.eq("client_id", onlyClientId);
       return q
         .then(function (r) { return r.error ? null : r.data; })
         .catch(function () { return null; });
@@ -86,7 +89,7 @@
        caller's own row unless public.is_admin(). */
     getAllClients: function () {
       return sb.from("clients")
-        .select("id, client_code, full_name, company, email, role, must_change_password")
+        .select("id, client_code, full_name, company, phone, email, role, must_change_password, created_at")
         .order("client_code")
         .then(function (r) { return r.error ? null : r.data; })
         .catch(function () { return null; });
@@ -145,12 +148,14 @@
           .eq("client_id", clientId)
           .order("dc_date", { ascending: false }),
         sb.from("invoices")
-          .select("id, invoice_number, invoice_date, invoice_file, client_id, delivery_challans(count)")
+          .select("id, invoice_number, invoice_date, invoice_file, client_id")
           .eq("client_id", clientId)
           .order("invoice_date", { ascending: false })
       ]).then(function (r) {
         if (r[0].error || r[1].error) return { error: friendly(r[0].error || r[1].error) };
         return { dc: r[0].data, invoice: r[1].data };
+      }).catch(function () {
+        return { error: "Could not load this client's documents. Check your connection and try again." };
       });
     },
 
