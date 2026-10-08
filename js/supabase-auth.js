@@ -270,7 +270,7 @@
 
     if (kind === "reset-request") {
       status(form, "Sending the reset email…", "info");
-      sb.auth.resetPasswordForEmail(email, { redirectTo: pageUrl(cfg.login) + "#reset" }).then(function (r) {
+      sb.auth.resetPasswordForEmail(email, { redirectTo: pageUrl(cfg.login) + "?reset=1" }).then(function (r) {
         done();
         if (r.error) return status(form, friendly(r.error), "error");
         status(form, "We have emailed a password reset link to " + email + ". Open it on this device to choose a new password.", "success");
@@ -329,9 +329,30 @@
     step.hidden = false;
   }
 
+  /* The emailed reset link returns to login.html?reset=1 with the recovery
+     token (or an error such as an expired link) in the URL fragment. */
+  var recovering = /[?&]reset=1/.test(location.search) || /type=recovery/.test(location.hash);
+  var linkError = /error_description=([^&]+)/.exec(location.hash);
+
+  function showLinkError() {
+    var panel = document.getElementById("panel-reset");
+    var signin = document.getElementById("panel-signin");
+    var form = document.querySelector("form[data-auth=reset-request]");
+    if (!panel || !form) return;
+    if (signin) signin.hidden = true;
+    panel.hidden = false;
+    var box = form.querySelector(".form-status");
+    if (!box) return;
+    box.hidden = false;
+    box.className = "form-status is-error";
+    box.textContent = "This reset link has expired or was already used. Enter your email to get a new one.";
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     if (!document.querySelector("form[data-auth]")) return;
     adaptResetPanel();
+    if (linkError) return showLinkError();
+    if (recovering) return showRecoveryStep();
 
     api.getSession().then(function (session) {
       if (!session) return;
