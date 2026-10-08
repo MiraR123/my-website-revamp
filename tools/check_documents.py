@@ -55,7 +55,7 @@ FAKE = r"""
     var match = function (r) { return f.every(function (fn) { return fn(r); }); };
     window.__fake.log.push(this.op + ' ' + this.table);
     if (this.op === 'insert') {
-      var row = Object.assign({ id: 'n' + (++seq) }, this.payload);
+      var row = Object.assign({ id: 'n' + (++seq), created_by: ADMIN, created_at: new Date(Date.now() + seq * 1000).toISOString() }, this.payload);
       var num = row.dc_number || row.invoice_number;
       var dup = rows.some(function (r) { return (r.dc_number || r.invoice_number) === num && r.client_id === row.client_id; });
       if (dup) return { data: null, error: { message: 'duplicate key value violates unique constraint' } };
@@ -144,9 +144,16 @@ with sync_playwright() as p:
     page.click("#tab-documents")
     check("client dropdown lists both clients", page.locator("#doc-client option").count() == 3)
 
-    page.select_option("#doc-client", "c1")
+    page.wait_for_function("document.getElementById('doc-list').textContent.indexOf('Loading') < 0")
+    check("my uploads empty at start", page.text_content("#doc-list").strip() == "You haven't uploaded any documents yet.")
+    page.select_option("#doc-scope", "all")
     page.wait_for_selector("#doc-list table")
-    check("existing DC listed as unbilled", "DC-4001" in page.text_content("#doc-list") and "Unbilled" in page.text_content("#doc-list"))
+    lst = page.text_content("#doc-list")
+    check("all uploads lists older DC with client", "DC-4001" in lst and "BAC-1005" in lst and "Unbilled" in lst)
+    page.select_option("#doc-scope", "mine")
+    page.wait_for_function("document.getElementById('doc-list').textContent.indexOf('DC-4001') < 0")
+
+    page.select_option("#doc-client", "c1")
 
     # validation: no file
     page.fill("#doc-number", "DC-4006")
@@ -199,7 +206,7 @@ with sync_playwright() as p:
     check("Invoice tab lists new invoice", "INV-2026-1001" in page.text_content("#inv-list"))
 
     # replace PDF of the invoice
-    rows = page.evaluate("Array.from(document.querySelectorAll('#doc-list tbody tr')).map(r => r.cells[1].textContent)")
+    rows = page.evaluate("Array.from(document.querySelectorAll('#doc-list tbody tr')).map(r => r.cells[2].textContent)")
     idx = rows.index("INV-2026-1001")
     with page.expect_file_chooser() as fc:
         page.click("[data-doc-replace='%d']" % idx)
@@ -216,6 +223,17 @@ with sync_playwright() as p:
     check("its DC is unbilled again", [d for d in fake["db"]["delivery_challans"] if d["dc_number"] == "DC-4006"][0]["invoice_id"] is None)
     page.wait_for_function("document.getElementById('dc-list').textContent.indexOf('DC-4006') >= 0")
     check("DC tab shows it again", True)
+
+    # upload for a second client: my list spans both clients
+    page.select_option("#doc-kind", "dc")
+    page.select_option("#doc-client", "a0")
+    page.fill("#doc-number", "DC-7000")
+    page.set_input_files("#doc-file", files=[{"name": "dc7.pdf", "mimeType": "application/pdf", "buffer": PDF}])
+    page.click("#doc-form button[type=submit]")
+    page.wait_for_function("document.getElementById('doc-list').textContent.indexOf('DC-7000') >= 0")
+    clients = page.evaluate("Array.from(document.querySelectorAll('#doc-list tbody tr')).map(r => r.cells[0].textContent + ' ' + r.cells[2].textContent)")
+    check("my uploads span clients, newest first " + str(clients), clients == ["BAC-1004 DC-7000", "BAC-1005 DC-4006"])
+    page.screenshot(path="/home/ubuntu/doc-tab-mine.png", full_page=True)
 
     # mobile layout: no horizontal overflow
     page.set_viewport_size({"width": 390, "height": 844})

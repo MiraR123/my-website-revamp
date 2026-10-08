@@ -760,3 +760,6 @@ address { font-style: normal; }
 .dash-table tr.is-link { cursor: pointer; }
 .dash-table tr.is-link:hover td { background: var(--surface-alt); }
 #panel-clients { scroll-margin-top: 96px; }
+
+.doc-scope { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; color: var(--ink); }
+.doc-scope select { width: auto; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); font: inherit; font-weight: 400; color: var(--ink); }
