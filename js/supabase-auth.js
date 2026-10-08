@@ -141,21 +141,29 @@
       return clientId + "/" + String(number).replace(/[^\w.-]+/g, "-") + ".pdf";
     },
 
-    getClientDocuments: function (clientId) {
-      return Promise.all([
-        sb.from("delivery_challans")
-          .select("id, dc_number, dc_date, dc_file, invoice_id, client_id, invoices(invoice_number)")
-          .eq("client_id", clientId)
-          .order("dc_date", { ascending: false }),
-        sb.from("invoices")
-          .select("id, invoice_number, invoice_date, invoice_file, client_id")
-          .eq("client_id", clientId)
-          .order("invoice_date", { ascending: false })
-      ]).then(function (r) {
+    /* filter.clientId limits to one client, filter.uploadedBy to one admin's
+       uploads; either may be empty. */
+    getDocuments: function (filter) {
+      filter = filter || {};
+      var dc = sb.from("delivery_challans")
+        .select("id, dc_number, dc_date, dc_file, invoice_id, client_id, created_by, created_at, clients(client_code), invoices(invoice_number)")
+        .order("created_at", { ascending: false });
+      var inv = sb.from("invoices")
+        .select("id, invoice_number, invoice_date, invoice_file, client_id, created_by, created_at, clients(client_code)")
+        .order("created_at", { ascending: false });
+      if (filter.clientId) { dc = dc.eq("client_id", filter.clientId); inv = inv.eq("client_id", filter.clientId); }
+      if (filter.uploadedBy) { dc = dc.eq("created_by", filter.uploadedBy); inv = inv.eq("created_by", filter.uploadedBy); }
+      return Promise.all([dc, inv]).then(function (r) {
         if (r[0].error || r[1].error) return { error: friendly(r[0].error || r[1].error) };
-        return { dc: r[0].data, invoice: r[1].data };
+        var ids = r[1].data.map(function (row) { return row.id; });
+        if (!ids.length) return { dc: r[0].data, invoice: r[1].data, billed: {} };
+        return sb.from("delivery_challans").select("invoice_id").in("invoice_id", ids).then(function (b) {
+          var billed = {};
+          (b.data || []).forEach(function (row) { billed[row.invoice_id] = (billed[row.invoice_id] || 0) + 1; });
+          return { dc: r[0].data, invoice: r[1].data, billed: billed };
+        });
       }).catch(function () {
-        return { error: "Could not load this client's documents. Check your connection and try again." };
+        return { error: "Could not load the documents. Check your connection and try again." };
       });
     },
 

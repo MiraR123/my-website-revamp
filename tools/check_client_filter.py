@@ -67,7 +67,7 @@ with sync_playwright() as p:
     page.wait_for_timeout(200)
     check("filter hidden on Documents tab", not page.is_visible("#client-filter"))
     check("documents picker follows filter", page.input_value("#doc-client") == "c2")
-    check("documents empty message", text(page, "#doc-list") == "No delivery challans or invoices uploaded for this client yet.")
+    check("documents list shows my uploads", text(page, "#doc-list") == "You haven't uploaded any documents yet.")
 
     page.click("#tab-account")
     check("filter hidden on Account tab", not page.is_visible("#client-filter"))

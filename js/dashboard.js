@@ -431,7 +431,7 @@
   /* Admin Documents tab: upload a DC or invoice PDF for a chosen client,
      tick the challans an invoice covers, and replace or delete entries. */
   var MAX_PDF = 10 * 1024 * 1024;
-  var docState = { clientId: "", docs: null, replace: null };
+  var docState = { clientId: "", bill: null, docs: null, scope: "mine", replace: null };
 
   function clientOptions(rows) {
     return (rows || []).map(function (row) {
@@ -494,9 +494,9 @@
     var host = document.getElementById("doc-bill-list");
     if (!host) return;
     if (!docState.clientId) return note(host, "Choose a client to see their unbilled challans.");
-    if (!docState.docs) return note(host, "Loading…");
-    if (docState.docs.error) return note(host, docState.docs.error);
-    var open = docState.docs.dc.filter(function (row) { return !row.invoice_id; });
+    if (!docState.bill) return note(host, "Loading…");
+    if (docState.bill.error) return note(host, docState.bill.error);
+    var open = docState.bill.dc.filter(function (row) { return !row.invoice_id; });
     if (!open.length) return note(host, "This client has no unbilled challans.");
     host.innerHTML = open.map(function (row) {
       return "<label class=\"check\"><input type=\"checkbox\" name=\"doc-dc\" value=\"" + escape(row.id) + "\"> <span><strong>" +
@@ -507,47 +507,63 @@
   function renderDocList() {
     var host = document.getElementById("doc-list");
     if (!host) return;
-    if (!docState.clientId) return note(host, "Choose a client above to see and manage their documents.");
     if (!docState.docs) return note(host, "Loading…");
     if (docState.docs.error) return note(host, docState.docs.error);
 
+    var code = function (row) { return (row.clients && row.clients.client_code) || "—"; };
     var rows = docState.docs.dc.map(function (row) {
-      return { kind: "dc", id: row.id, label: "Delivery challan", number: row.dc_number, date: row.dc_date,
-        path: row.dc_file || auth.documentPath(row.client_id, row.dc_number),
+      return { kind: "dc", id: row.id, client: code(row), label: "Delivery challan", number: row.dc_number, date: row.dc_date,
+        uploaded: row.created_at, path: row.dc_file || auth.documentPath(row.client_id, row.dc_number),
         detail: row.invoice_id ? "Billed on " + ((row.invoices && row.invoices.invoice_number) || "an invoice") : "Unbilled" };
     }).concat(docState.docs.invoice.map(function (row) {
-      var count = docState.docs.dc.filter(function (dc) { return dc.invoice_id === row.id; }).length;
-      return { kind: "invoice", id: row.id, label: "Invoice", number: row.invoice_number, date: row.invoice_date,
-        path: row.invoice_file || auth.documentPath(row.client_id, row.invoice_number),
+      var count = docState.docs.billed[row.id] || 0;
+      return { kind: "invoice", id: row.id, client: code(row), label: "Invoice", number: row.invoice_number, date: row.invoice_date,
+        uploaded: row.created_at, path: row.invoice_file || auth.documentPath(row.client_id, row.invoice_number),
         detail: count + (count === 1 ? " challan" : " challans") };
-    }));
+    })).sort(function (a, b) { return String(b.uploaded || "").localeCompare(String(a.uploaded || "")); });
     docState.rows = rows;
 
-    if (!rows.length) return note(host, "No delivery challans or invoices uploaded for this client yet.");
+    if (!rows.length) {
+      return note(host, docState.scope === "mine" ? "You haven't uploaded any documents yet." : "No documents have been uploaded yet.");
+    }
 
     host.innerHTML = "<div class=\"table-wrap\"><table class=\"dash-table\">" +
-      "<thead><tr><th>Type</th><th>Number</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>" +
+      "<thead><tr><th>Client</th><th>Type</th><th>Number</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>" +
       rows.map(function (row, index) {
-        return "<tr><td>" + escape(row.label) + "</td><td><strong>" + escape(row.number) + "</strong></td><td>" +
-          date(row.date) + "</td><td>" + escape(row.detail) + "</td><td class=\"doc-actions\">" +
+        return "<tr><td>" + escape(row.client) + "</td><td>" + escape(row.label) + "</td><td><strong>" + escape(row.number) +
+          "</strong></td><td>" + date(row.date) + "</td><td>" + escape(row.detail) + "</td><td class=\"doc-actions\">" +
           "<button type=\"button\" class=\"btn btn-sm\" data-doc-view=\"" + index + "\">View</button>" +
           "<button type=\"button\" class=\"btn btn-sm\" data-doc-replace=\"" + index + "\">Replace PDF</button>" +
           "<button type=\"button\" class=\"btn btn-sm btn-danger\" data-doc-delete=\"" + index + "\">Delete</button></td></tr>";
       }).join("") + "</tbody></table></div>";
   }
 
-  function loadClientDocs() {
-    docState.docs = null;
-    renderDocList();
+  function loadBill() {
+    docState.bill = null;
     renderBillList();
     if (!docState.clientId) return Promise.resolve();
     var wanted = docState.clientId;
-    return auth.getClientDocuments(wanted).then(function (docs) {
+    return auth.getDocuments({ clientId: wanted }).then(function (docs) {
       if (wanted !== docState.clientId) return;
-      docState.docs = docs.error ? { error: docs.error, dc: [], invoice: [] } : docs;
-      renderDocList();
+      docState.bill = docs.error ? { error: docs.error, dc: [] } : docs;
       renderBillList();
     });
+  }
+
+  function loadDocList() {
+    docState.docs = null;
+    renderDocList();
+    var scope = docState.scope;
+    return auth.getDocuments({ uploadedBy: scope === "mine" ? clientId : "" }).then(function (docs) {
+      if (scope !== docState.scope) return;
+      docState.docs = docs.error ? { error: docs.error, dc: [], invoice: [], billed: {} } : docs;
+      renderDocList();
+    });
+  }
+
+  function reloadDocs() {
+    loadBill();
+    loadDocList();
   }
 
   function documentsPanel(clients) {
@@ -577,9 +593,17 @@
     kind.addEventListener("change", syncKind);
     select.addEventListener("change", function () {
       docState.clientId = select.value;
-      loadClientDocs();
+      loadBill();
     });
+    var scope = document.getElementById("doc-scope");
+    if (scope) {
+      scope.addEventListener("change", function () {
+        docState.scope = scope.value;
+        loadDocList();
+      });
+    }
     syncKind();
+    loadDocList();
 
     form.addEventListener("submit", function (event) {
       event.preventDefault();
@@ -612,7 +636,7 @@
           r.error ? "error" : "success");
         numberInput.value = "";
         document.getElementById("doc-file").value = "";
-        loadClientDocs();
+        reloadDocs();
         refreshClientTabs();
       }).catch(function () {
         button.disabled = false;
@@ -645,7 +669,7 @@
         auth.deleteDocument(row.kind, row.id, row.path).then(function (r) {
           if (r.error) { target.disabled = false; return status(box, r.error, "error"); }
           status(box, row.number + " deleted.", "success");
-          loadClientDocs();
+          reloadDocs();
           refreshClientTabs();
         });
       }
