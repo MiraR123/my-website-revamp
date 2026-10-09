@@ -746,6 +746,8 @@ address { font-style: normal; }
 .doc-bill .check { margin-bottom: 8px; }
 .field input[type=file] { padding: 9px 12px; background: var(--surface-alt); }
 .doc-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+td.doc-actions { display: table-cell; vertical-align: middle; }
+td.doc-actions .btn { margin: 3px 6px 3px 0; }
 .dash-table .btn-danger { color: #b3261e; }
 .dash-table .btn-danger:hover { background: #fdecea; }
 
@@ -763,3 +765,22 @@ address { font-style: normal; }
 
 .doc-scope { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; color: var(--ink); }
 .doc-scope select { width: auto; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); font: inherit; font-weight: 400; color: var(--ink); }
+
+.dash-table .link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--brand);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.dash-table .link-btn::after { content: " ▸"; text-decoration: none; display: inline-block; margin-left: 2px; }
+.dash-table .link-btn[aria-expanded="true"]::after { content: " ▾"; }
+.dash-table tr.inv-dcs > td { background: var(--surface-alt); padding-top: 10px; padding-bottom: 12px; }
+.inv-dcs-head { margin: 0 0 var(--space-2); font-size: .88rem; font-weight: 600; color: var(--muted); }
+.inv-dcs-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.inv-dcs-list li { display: flex; align-items: center; justify-content: flex-start; gap: var(--space-4); flex-wrap: wrap; }
+.inv-dcs-list li > span { min-width: 12.5rem; }
+

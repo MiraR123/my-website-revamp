@@ -208,8 +208,11 @@
     }
 
     var body = rows.map(function (row, index) {
+      var number = escape(row[opts.numberKey]);
       return "<tr>" +
-        "<td><strong>" + escape(row[opts.numberKey]) + "</strong></td>" +
+        "<td>" + (opts.expand
+          ? "<button type=\"button\" class=\"link-btn\" aria-expanded=\"false\" data-expand=\"" + index + "\"><strong>" + number + "</strong></button>"
+          : "<strong>" + number + "</strong>") + "</td>" +
         "<td>" + date(row[opts.dateKey]) + "</td>" +
         "<td>" + escape(code(row)) + "</td>" +
         "<td><button type=\"button\" class=\"btn btn-sm\" data-row=\"" + index +
@@ -222,43 +225,81 @@
       "<tbody>" + body + "</tbody></table></div>";
 
     host.onclick = function (event) {
+      var toggle = event.target.closest("[data-expand]");
+      if (toggle) return expandInvoice(toggle, rows[Number(toggle.dataset.expand)]);
+
+      var dcButton = event.target.closest("[data-dc]");
+      if (dcButton) return downloadDocument(CHALLAN, dcButton.closest("tr").__challans[Number(dcButton.dataset.dc)], dcButton);
+
       var button = event.target.closest("[data-row]");
-      if (!button) return;
-
-      var row = rows[Number(button.dataset.row)];
-      var name = String(row[opts.numberKey] || opts.heading).replace(/[^\w.-]+/g, "-");
-      var path = row[opts.fileKey] || ((row.client_id || clientId) + "/" + name + ".pdf");
-
-      button.disabled = true;
-      auth.getFileUrl(opts.bucket, path, name + ".pdf").then(function (url) {
-        button.disabled = false;
-        if (url) { location.href = url; return; }
-        saveAs(name + ".pdf", "application/pdf", simplePdf(opts.heading, [
-          [opts.numberLabel, String(row[opts.numberKey] || "")],
-          [opts.dateLabel, date(row[opts.dateKey])],
-          ["Customer code", code(row)]
-        ]));
-      });
+      if (button) downloadDocument(opts, rows[Number(button.dataset.row)], button);
     };
   }
 
+  function downloadDocument(opts, row, button) {
+    var name = String(row[opts.numberKey] || opts.heading).replace(/[^\w.-]+/g, "-");
+    var path = row[opts.fileKey] || ((row.client_id || clientId) + "/" + name + ".pdf");
+
+    button.disabled = true;
+    auth.getFileUrl(opts.bucket, path, name + ".pdf").then(function (url) {
+      button.disabled = false;
+      if (url) { location.href = url; return; }
+      saveAs(name + ".pdf", "application/pdf", simplePdf(opts.heading, [
+        [opts.numberLabel, String(row[opts.numberKey] || "")],
+        [opts.dateLabel, date(row[opts.dateKey])],
+        ["Customer code", code(row)]
+      ]));
+    });
+  }
+
+  /* Clicking an invoice number opens a row listing the challans billed on it. */
+  function expandInvoice(toggle, invoice) {
+    var tr = toggle.closest("tr");
+    var next = tr.nextElementSibling;
+    if (next && next.classList.contains("inv-dcs")) {
+      next.remove();
+      toggle.setAttribute("aria-expanded", "false");
+      return;
+    }
+    toggle.setAttribute("aria-expanded", "true");
+    var detail = document.createElement("tr");
+    detail.className = "inv-dcs";
+    detail.innerHTML = "<td colspan=\"4\"><p class=\"tight\">Loading challans…</p></td>";
+    tr.parentNode.insertBefore(detail, tr.nextSibling);
+
+    auth.getInvoiceChallans(invoice.id).then(function (list) {
+      var cell = detail.firstChild;
+      if (list === null) return note(cell, "The challans for this invoice could not be loaded. Please refresh the page.");
+      if (!list.length) return note(cell, "No delivery challans are linked to " + invoice.invoice_number + ".");
+      detail.__challans = list;
+      cell.innerHTML = "<p class=\"inv-dcs-head\">Delivery challans billed on " + escape(invoice.invoice_number) + "</p>" +
+        "<ul class=\"inv-dcs-list\">" + list.map(function (dc, index) {
+          return "<li><span><strong>" + escape(dc.dc_number) + "</strong> · " + date(dc.dc_date) + "</span>" +
+            "<button type=\"button\" class=\"btn btn-sm\" data-dc=\"" + index + "\">Download PDF</button></li>";
+        }).join("") + "</ul>";
+    });
+  }
+
+  var CHALLAN = {
+    heading: "Delivery challan",
+    numberKey: "dc_number",
+    numberLabel: "DC no.",
+    dateKey: "dc_date",
+    dateLabel: "DC date",
+    fileKey: "dc_file",
+    bucket: cfg.challanBucket || "challans"
+  };
+
   function renderChallans(list, target) {
-    renderDocuments({
+    renderDocuments(Object.assign({}, CHALLAN, {
       host: (target && target.host) || "dc-list",
       stats: (target && target.stats) || "dc-stats",
-      heading: "Delivery challan",
-      numberKey: "dc_number",
-      numberLabel: "DC no.",
-      dateKey: "dc_date",
-      dateLabel: "DC date",
-      fileKey: "dc_file",
-      bucket: cfg.challanBucket || "challans",
       statLabel: "Challans pending billing",
       offText: "Delivery challans could not be loaded right now. Please refresh the page in a moment.",
       emptyText: filterName()
         ? "No unbilled delivery challans for " + filterName() + "."
         : isAdmin ? "No unbilled delivery challans for any client." : "No delivery challans available."
-    }, list);
+    }), list);
   }
 
   function renderInvoices(list, target) {
@@ -272,6 +313,7 @@
       dateLabel: "Invoice date",
       fileKey: "invoice_file",
       bucket: cfg.invoiceBucket || "invoices",
+      expand: true,
       statLabel: "Invoices raised",
       offText: "Invoices could not be loaded right now. Please refresh the page in a moment.",
       emptyText: filterName()
@@ -511,13 +553,14 @@
     if (docState.docs.error) return note(host, docState.docs.error);
 
     var code = function (row) { return (row.clients && row.clients.client_code) || "—"; };
+    var clientName = function (row) { return (row.clients && (row.clients.company || row.clients.full_name)) || ""; };
     var rows = docState.docs.dc.map(function (row) {
-      return { kind: "dc", id: row.id, client: code(row), label: "Delivery challan", number: row.dc_number, date: row.dc_date,
+      return { kind: "dc", id: row.id, client: code(row), clientName: clientName(row), label: "Delivery challan", number: row.dc_number, date: row.dc_date,
         uploaded: row.created_at, path: row.dc_file || auth.documentPath(row.client_id, row.dc_number),
         detail: row.invoice_id ? "Billed on " + ((row.invoices && row.invoices.invoice_number) || "an invoice") : "Unbilled" };
     }).concat(docState.docs.invoice.map(function (row) {
       var count = docState.docs.billed[row.id] || 0;
-      return { kind: "invoice", id: row.id, client: code(row), label: "Invoice", number: row.invoice_number, date: row.invoice_date,
+      return { kind: "invoice", id: row.id, client: code(row), clientName: clientName(row), label: "Invoice", number: row.invoice_number, date: row.invoice_date,
         uploaded: row.created_at, path: row.invoice_file || auth.documentPath(row.client_id, row.invoice_number),
         detail: count + (count === 1 ? " challan" : " challans") };
     })).sort(function (a, b) { return String(b.uploaded || "").localeCompare(String(a.uploaded || "")); });
@@ -528,9 +571,9 @@
     }
 
     host.innerHTML = "<div class=\"table-wrap\"><table class=\"dash-table\">" +
-      "<thead><tr><th>Client</th><th>Type</th><th>Number</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>" +
+      "<thead><tr><th>Client</th><th>Client name</th><th>Type</th><th>Number</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>" +
       rows.map(function (row, index) {
-        return "<tr><td>" + escape(row.client) + "</td><td>" + escape(row.label) + "</td><td><strong>" + escape(row.number) +
+        return "<tr><td>" + escape(row.client) + "</td><td>" + escape(row.clientName || "—") + "</td><td>" + escape(row.label) + "</td><td><strong>" + escape(row.number) +
           "</strong></td><td>" + date(row.date) + "</td><td>" + escape(row.detail) + "</td><td class=\"doc-actions\">" +
           "<button type=\"button\" class=\"btn btn-sm\" data-doc-view=\"" + index + "\">View</button>" +
           "<button type=\"button\" class=\"btn btn-sm\" data-doc-replace=\"" + index + "\">Replace PDF</button>" +
