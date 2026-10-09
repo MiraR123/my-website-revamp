@@ -74,9 +74,18 @@
         .catch(function () { return null; });
     },
 
+    getInvoiceChallans: function (invoiceId) {
+      return sb.from("delivery_challans")
+        .select("dc_number, dc_date, dc_file, client_id, clients(client_code)")
+        .eq("invoice_id", invoiceId)
+        .order("dc_date", { ascending: true })
+        .then(function (r) { return r.error ? null : r.data; })
+        .catch(function () { return null; });
+    },
+
     getInvoices: function (userId, isAdmin, onlyClientId) {
       var q = sb.from("invoices")
-        .select("invoice_number, invoice_date, invoice_file, client_id, clients(client_code)")
+        .select("id, invoice_number, invoice_date, invoice_file, client_id, clients(client_code)")
         .order("invoice_date", { ascending: false });
       if (!isAdmin) q = q.eq("client_id", userId);
       else if (onlyClientId) q = q.eq("client_id", onlyClientId);
@@ -146,10 +155,10 @@
     getDocuments: function (filter) {
       filter = filter || {};
       var dc = sb.from("delivery_challans")
-        .select("id, dc_number, dc_date, dc_file, invoice_id, client_id, created_by, created_at, clients(client_code), invoices(invoice_number)")
+        .select("id, dc_number, dc_date, dc_file, invoice_id, client_id, created_by, created_at, clients(client_code, company, full_name), invoices(invoice_number)")
         .order("created_at", { ascending: false });
       var inv = sb.from("invoices")
-        .select("id, invoice_number, invoice_date, invoice_file, client_id, created_by, created_at, clients(client_code)")
+        .select("id, invoice_number, invoice_date, invoice_file, client_id, created_by, created_at, clients(client_code, company, full_name)")
         .order("created_at", { ascending: false });
       if (filter.clientId) { dc = dc.eq("client_id", filter.clientId); inv = inv.eq("client_id", filter.clientId); }
       if (filter.uploadedBy) { dc = dc.eq("created_by", filter.uploadedBy); inv = inv.eq("created_by", filter.uploadedBy); }
