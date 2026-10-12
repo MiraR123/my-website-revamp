@@ -473,7 +473,7 @@
   /* Admin Documents tab: upload a DC or invoice PDF for a chosen client,
      tick the challans an invoice covers, and replace or delete entries. */
   var MAX_PDF = 10 * 1024 * 1024;
-  var docState = { clientId: "", bill: null, docs: null, scope: "mine", replace: null };
+  var docState = { clientId: "", bill: null, docs: null, scope: "mine", filterClient: "", replace: null };
 
   function clientOptions(rows) {
     return (rows || []).map(function (row) {
@@ -488,6 +488,12 @@
       var current = select.value;
       select.innerHTML = "<option value=\"\">Choose a client…</option>" + clientOptions(rows);
       select.value = current;
+    }
+    var docFilter = document.getElementById("doc-filter-client");
+    if (docFilter) {
+      docFilter.innerHTML = "<option value=\"\">All clients</option>" + clientOptions(rows);
+      docFilter.value = docState.filterClient;
+      if (docFilter.value !== docState.filterClient) docState.filterClient = docFilter.value = "";
     }
     var filter = document.getElementById("client-filter");
     if (filter) {
@@ -567,7 +573,12 @@
     docState.rows = rows;
 
     if (!rows.length) {
-      return note(host, docState.scope === "mine" ? "You haven't uploaded any documents yet." : "No documents have been uploaded yet.");
+      var picked = document.getElementById("doc-filter-client");
+      var forWho = docState.filterClient && picked && picked.selectedIndex > 0
+        ? " for " + picked.options[picked.selectedIndex].text.split(" — ")[0] : "";
+      return note(host, docState.scope === "mine"
+        ? "You haven't uploaded any documents" + forWho + " yet."
+        : "No documents have been uploaded" + forWho + " yet.");
     }
 
     host.innerHTML = "<div class=\"table-wrap\"><table class=\"dash-table\">" +
@@ -596,9 +607,9 @@
   function loadDocList() {
     docState.docs = null;
     renderDocList();
-    var scope = docState.scope;
-    return auth.getDocuments({ uploadedBy: scope === "mine" ? clientId : "" }).then(function (docs) {
-      if (scope !== docState.scope) return;
+    var scope = docState.scope, only = docState.filterClient;
+    return auth.getDocuments({ uploadedBy: scope === "mine" ? clientId : "", clientId: only }).then(function (docs) {
+      if (scope !== docState.scope || only !== docState.filterClient) return;
       docState.docs = docs.error ? { error: docs.error, dc: [], invoice: [], billed: {} } : docs;
       renderDocList();
     });
@@ -638,6 +649,13 @@
       docState.clientId = select.value;
       loadBill();
     });
+    var docFilter = document.getElementById("doc-filter-client");
+    if (docFilter) {
+      docFilter.addEventListener("change", function () {
+        docState.filterClient = docFilter.value;
+        loadDocList();
+      });
+    }
     var scope = document.getElementById("doc-scope");
     if (scope) {
       scope.addEventListener("change", function () {
